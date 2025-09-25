@@ -1,0 +1,100 @@
+<!-- templates/view_student.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Details - Certification Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">Certification Tracker</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Teacher</div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('add_student') }}">Add Student</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Student Details</h1>
+                <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-back">Back to Dashboard</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <div class="student-info">
+                <h2>{{ student.full_name }}</h2>
+                <p>Email: {{ student.email }}</p>
+            </div>
+            
+            <div class="certificates-list">
+                <h3>Student Certificates</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Course</th>
+                                <th>Certificate Name</th>
+                                <th>Issue Date</th>
+                                <th>Status</th>
+                                <th>Certificate</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cert in certificates %}
+                            <tr>
+                                <td>{{ cert.course_name }}</td>
+                                <td>{{ cert.certificate_name }}</td>
+                                <td>{{ cert.issue_date }}</td>
+                                <td>
+                                    <span class="badge badge-{{ cert.verification_status }}">
+                                        {{ cert.verification_status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ cert.certificate_file }}" 
+                                        class="btn btn-sm" target="_blank">View</a>
+                                </td>
+
+                                <td>
+                                    {% if cert.verification_status == 'pending' %}
+                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='verified') }}" 
+                                       class="btn btn-sm btn-success">Verify</a>
+                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='rejected') }}" 
+                                       class="btn btn-sm btn-danger">Reject</a>
+                                    {% elif cert.verification_status == 'rejected' %}
+                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='verified') }}" 
+                                       class="btn btn-sm btn-success">Verify</a>
+                                    {% elif cert.verification_status == 'verified' %}
+                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='rejected') }}" 
+                                       class="btn btn-sm btn-danger">Reject</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6">No certificates uploaded yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

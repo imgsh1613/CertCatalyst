@@ -1,0 +1,241 @@
+<!-- templates/teacher_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Certification Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">Certification Tracker</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Teacher</div>
+            </div>
+            <ul class="nav-links">
+                <li class="active"><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('add_student') }}">Add Student</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Teacher Dashboard</h1>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <h3>Total Students</h3>
+                    <div class="stat-value">{{ total_students }}</div>
+                </div>
+                {% for course in certificates_by_course %}
+                <div class="stat-card">
+                    <h3>{{ course.course_name }}</h3>
+                    <div class="stat-value">{{ course.total_certificates }}</div>
+                    <div class="stat-label">Certificates</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="dashboard-charts">
+                <div class="chart-container">
+                    <h3>Certificates by Course</h3>
+                    <canvas id="certificatesByCourse"></canvas>
+                </div>
+            </div>
+            <!-- Search Section -->
+            <div class="search-section">
+                <h3>Search Students</h3>
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        id="studentSearch" 
+                        class="search-input" 
+                        placeholder="Type student name to search..."
+                        autocomplete="off"
+                    >
+                    <button id="clearSearch" class="clear-search">Clear</button>
+                </div>
+                <div id="searchResults" class="search-results-info"></div>
+            </div>
+            
+            <div class="students-list">
+                <h3>
+                    Students 
+                    <span id="studentCount" class="student-count">({{ certificates_by_student|length }})</span>
+                </h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Certificates</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            {% for student in certificates_by_student %}
+                            <tr class="student-row" data-student-name="{{ student.full_name.lower() }}">
+                                <td class="student-name">{{ student.full_name }}</td>
+                                <td>{{ student.certificate_count }}</td>
+                                <td>
+                                    <a href="{{ url_for('view_student', student_id=student.user_id) }}" class="btn btn-sm">View Details</a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr id="noStudentsRow">
+                                <td colspan="3">No students added yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div id="noSearchResults" class="no-results" style="display: none;">
+                        No students found matching your search.
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+            
+    
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        // Check if we have course data before creating the chart
+        {% if certificates_by_course %}
+        // Prepare data safely
+        const courseLabels = [
+            {% for course in certificates_by_course %}
+                '{{ course.course_name|safe }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        const courseData = [
+            {% for course in certificates_by_course %}
+                {{ course.total_certificates }}{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        // Chart for certificates by course
+        const courseCtx = document.getElementById('certificatesByCourse').getContext('2d');
+        new Chart(courseCtx, {
+            type: 'pie',
+            data: {
+                labels: courseLabels,
+                datasets: [{
+                    data: courseData,
+                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        enabled: true
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        {% else %}
+        // No data available - show message or empty chart
+        document.getElementById('certificatesByCourse').parentElement.innerHTML = '<p>No certificate data available yet.</p>';
+        {% endif %}
+
+        // Student search functionality
+        const searchInput = document.getElementById('studentSearch');
+        const clearButton = document.getElementById('clearSearch');
+        const searchResults = document.getElementById('searchResults');
+        const studentRows = document.querySelectorAll('.student-row');
+        const studentCount = document.getElementById('studentCount');
+        const noSearchResults = document.getElementById('noSearchResults');
+        const studentsTable = document.querySelector('.table-responsive table');
+        const totalStudents = {{ certificates_by_student|length }};
+        
+        function highlightText(text, searchTerm) {
+            if (!searchTerm) return text;
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+        
+        function performSearch() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+            
+            if (searchTerm === '') {
+                // Show all students
+                studentRows.forEach(row => {
+                    row.style.display = '';
+                    const nameCell = row.querySelector('.student-name');
+                    const originalName = nameCell.textContent;
+                    nameCell.innerHTML = originalName;
+                });
+                visibleCount = totalStudents;
+                searchResults.textContent = '';
+                noSearchResults.style.display = 'none';
+                studentsTable.style.display = '';
+            } else {
+                // Filter students
+                studentRows.forEach(row => {
+                    const studentName = row.dataset.studentName;
+                    const nameCell = row.querySelector('.student-name');
+                    const originalName = nameCell.textContent;
+                    
+                    if (studentName.includes(searchTerm)) {
+                        row.style.display = '';
+                        nameCell.innerHTML = highlightText(originalName, searchInput.value.trim());
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                        nameCell.innerHTML = originalName;
+                    }
+                });
+                
+                if (visibleCount === 0) {
+                    noSearchResults.style.display = 'block';
+                    studentsTable.style.display = 'none';
+                } else {
+                    noSearchResults.style.display = 'none';
+                    studentsTable.style.display = '';
+                }
+                
+                searchResults.textContent = `Showing ${visibleCount} of ${totalStudents} students`;
+            }
+            
+            studentCount.textContent = `(${visibleCount})`;
+        }
+        
+        // Event listeners
+        searchInput.addEventListener('input', performSearch);
+        
+        clearButton.addEventListener('click', () => {
+            searchInput.value = '';
+            performSearch();
+            searchInput.focus();
+        });
+        
+        // Focus search on Ctrl+F or Cmd+F
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        });
+    </script>
+</body>
+</html>
