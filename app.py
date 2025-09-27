@@ -39,8 +39,7 @@ def get_db_connection():
         user = os.getenv('DB_USER'),
         password = os.getenv('DB_PASSWORD'),
         database = os.getenv('DB_NAME'),
-        ssl_ca = 'isrgrootx1.pem',
-        ssl_verify_identity = True
+        ssl_ca = 'isrgrootx1.pem'
     )
 '''
 def allowed_file(filename):
@@ -398,6 +397,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
 """
+
 
 
 
