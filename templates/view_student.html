@@ -95,12 +95,19 @@
         </main>
     </div>
 
-<script>
+    <script>
     function openPDF(url, filename) {
+        console.log('openPDF called with:', url, filename);
+        
+        if (!url || url.trim() === '') {
+            alert('No certificate URL found!');
+            return;
+        }
+        
         // Create a more robust PDF viewer
         const newWindow = window.open('', '_blank');
         if (!newWindow) {
-            // Fallback if popup is blocked
+            alert('Popup blocked! Opening in same tab...');
             window.location.href = url;
             return;
         }
@@ -111,14 +118,13 @@
             <head>
                 <title>${filename || 'Certificate'}</title>
                 <style>
-                    body { margin: 0; padding: 0; background: #f0f0f0; }
+                    body { margin: 0; padding: 0; background: #f0f0f0; font-family: Arial, sans-serif; }
                     .container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
                     .toolbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-                    .toolbar button { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+                    .toolbar button { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
                     .toolbar button:hover { background: #666; }
                     .pdf-container { flex: 1; overflow: hidden; }
                     iframe { width: 100%; height: 100%; border: none; }
-                    .error { padding: 20px; text-align: center; color: #e74a3b; }
                     .fallback { padding: 20px; text-align: center; }
                     .fallback a { color: #4e73df; text-decoration: none; padding: 10px 20px; background: #f8f9fc; border-radius: 4px; display: inline-block; }
                 </style>
@@ -126,18 +132,15 @@
             <body>
                 <div class="container">
                     <div class="toolbar">
-                        <span>Certificate Viewer</span>
+                        <span>Certificate Viewer - ${filename || 'Certificate'}</span>
                         <div>
-                            <button onclick="window.open('${url}', '_blank')">Open in New Tab</button>
+                            <button onclick="window.open('${url}', '_blank')">Open Original</button>
                             <button onclick="downloadPDF('${url}', '${filename || 'certificate.pdf'}')">Download</button>
                             <button onclick="window.close()">Close</button>
                         </div>
                     </div>
                     <div class="pdf-container">
-                        <iframe src="${url}" 
-                                onload="console.log('PDF loaded successfully')"
-                                onerror="showError()">
-                        </iframe>
+                        <iframe src="${url}" onload="console.log('PDF loaded')" onerror="showFallback()"></iframe>
                         <div id="fallback" class="fallback" style="display: none;">
                             <h3>Unable to display PDF</h3>
                             <p>Your browser may not support PDF viewing.</p>
@@ -156,31 +159,23 @@
                         document.body.removeChild(a);
                     }
                     
-                    function showError() {
+                    function showFallback() {
                         document.getElementById('fallback').style.display = 'block';
                         document.querySelector('iframe').style.display = 'none';
                     }
-                    
-                    // Fallback for browsers that don't support PDF viewing
-                    setTimeout(() => {
-                        const iframe = document.querySelector('iframe');
-                        try {
-                            if (!iframe.contentDocument && !iframe.contentWindow) {
-                                showError();
-                            }
-                        } catch(e) {
-                            console.log('PDF viewer fallback triggered');
-                        }
-                    }, 3000);
-                </script>
+                <\/script>
             </body>
             </html>
         `);
-        }
+    }
     
+    // Test if function is loaded
+    console.log('openPDF function loaded:', typeof openPDF === 'function');
     </script>
+
 </body>
 
 </html>
+
 
 
