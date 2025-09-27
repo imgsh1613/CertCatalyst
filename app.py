@@ -80,7 +80,7 @@ def login():
         
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
             cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
             user = cursor.fetchone()
             cursor.close()
@@ -148,7 +148,7 @@ def teacher_dashboard():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Get total number of students
         cursor.execute(
@@ -203,7 +203,7 @@ def student_dashboard():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Get student's certificates
         cursor.execute('''
@@ -292,7 +292,7 @@ def add_student():
         
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
             
             # Find student by email
             cursor.execute('SELECT user_id FROM users WHERE email = %s AND user_type = "student"', (student_email,))
@@ -337,7 +337,7 @@ def view_student(student_id):
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Verify teacher is linked to this student
         cursor.execute(
@@ -414,6 +414,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
 """
+
 
 
 
