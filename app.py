@@ -250,30 +250,47 @@ def upload_certificate():
     
     if file and allowed_file(file.filename):
         try:
-            # Get file extension to determine resource type
             filename = file.filename.lower()
+            print(f"Uploading file: {filename}")
             
             if filename.endswith('.pdf'):
-                # For PDFs, use raw resource type
+                # Enhanced PDF upload with proper content type
                 upload_result = cloudinary.uploader.upload(
                     file,
                     folder="certificates",
-                    public_id=str(uuid.uuid4()),
-                    resource_type="raw",  # ✅ Correct for PDFs
+                    public_id=f"cert_{student_id}_{uuid.uuid4()}",
+                    resource_type="raw",
+                    use_filename=True,
+                    unique_filename=False,
+                    overwrite=True,
+                    # Add these for better PDF handling
+                    context={
+                        "content_type": "application/pdf",
+                        "original_filename": file.filename
+                    },
+                    # Ensure proper file extension
                     format="pdf"
                 )
+                
+                # Log the upload result for debugging
+                print(f"PDF upload successful:")
+                print(f"  URL: {upload_result['secure_url']}")
+                print(f"  Public ID: {upload_result['public_id']}")
+                print(f"  Format: {upload_result.get('format', 'unknown')}")
+                print(f"  Resource Type: {upload_result.get('resource_type', 'unknown')}")
+                
             else:
-                # For images (jpg, png, jpeg), use image resource type
+                # For images
                 upload_result = cloudinary.uploader.upload(
                     file,
-                    folder="certificates", 
-                    public_id=str(uuid.uuid4()),
-                    resource_type="image"  # ✅ Correct for images
+                    folder="certificates",
+                    public_id=f"cert_{student_id}_{uuid.uuid4()}",
+                    resource_type="image"
                 )
             
-            file_url = upload_result['secure_url']  # Cloudinary hosted URL
+            file_url = upload_result['secure_url']
             
-            # Save to database with Cloudinary URL
+            # Save to database
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
@@ -287,10 +304,14 @@ def upload_certificate():
             conn.close()
             
             flash('Certificate uploaded successfully!', 'success')
+            
         except Exception as e:
             flash(f'Upload failed: {str(e)}', 'danger')
+            print(f"Upload error: {e}")
+            import traceback
+            traceback.print_exc()
     else:
-        flash('Invalid file type', 'danger')
+        flash('Invalid file type. Please upload PDF, JPG, or PNG files only.', 'danger')
     
     return redirect(url_for('student_dashboard'))
 
@@ -428,6 +449,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
 """
+
 
 
 
