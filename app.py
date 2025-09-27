@@ -66,12 +66,7 @@ def get_db_connection():
         # Add SSL configuration for TiDB Cloud
         # TiDB Cloud requires SSL but handles certificates automatically
         if os.getenv('DB_HOST') and 'tidbcloud.com' in os.getenv('DB_HOST'):
-            config['ssl_disabled'] = False
-            config['ssl_verify_cert'] = True
-            config['ssl_verify_identity'] = False
-        else:
-            # For local development, you might disable SSL
-            config['ssl_disabled'] = True
+            config['ssl_verify_cert'] = False
             
         return mysql.connector.connect(**config)
     except Exception as e:
@@ -430,6 +425,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
 """
+
 
 
 
