@@ -57,10 +57,10 @@ def get_db_connection():
             'ca': 'isrgrootx1.pem'
         }
     )
-'''
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-'''
+
 
 # Routes
 @app.route('/')
@@ -250,13 +250,27 @@ def upload_certificate():
     
     if file and allowed_file(file.filename):
         try:
-            # Upload file to Cloudinary
-            upload_result = cloudinary.uploader.upload(
-                file,
-                folder="certificates",
-                public_id=str(uuid.uuid4()),
-                resource_type="auto"
-            )
+            # Get file extension to determine resource type
+            filename = file.filename.lower()
+            
+            if filename.endswith('.pdf'):
+                # For PDFs, use raw resource type
+                upload_result = cloudinary.uploader.upload(
+                    file,
+                    folder="certificates",
+                    public_id=str(uuid.uuid4()),
+                    resource_type="raw",  # ✅ Correct for PDFs
+                    format="pdf"
+                )
+            else:
+                # For images (jpg, png, jpeg), use image resource type
+                upload_result = cloudinary.uploader.upload(
+                    file,
+                    folder="certificates", 
+                    public_id=str(uuid.uuid4()),
+                    resource_type="image"  # ✅ Correct for images
+                )
+            
             file_url = upload_result['secure_url']  # Cloudinary hosted URL
             
             # Save to database with Cloudinary URL
@@ -414,6 +428,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
 """
+
 
 
 
