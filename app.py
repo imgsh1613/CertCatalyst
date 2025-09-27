@@ -30,7 +30,7 @@ cloudinary.config(
     api_key=os.getenv('CLOUDINARY_API_KEY'),
     api_secret=os.getenv('CLOUDINARY_API_SECRET')
 )
-
+'''
 # Database connection function with environment variables
 def get_db_connection():
     return mysql.connector.connect(
@@ -43,9 +43,41 @@ def get_db_connection():
         ssl_verify_cert = True
     )
 '''
+'''
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 '''
+def get_db_connection():
+    try:
+        # TiDB connection configuration
+        config = {
+            'host': os.getenv('DB_HOST'),
+            'port': int(os.getenv('DB_PORT', 4000)),
+            'user': os.getenv('DB_USER'),
+            'password': os.getenv('DB_PASSWORD'),
+            'database': os.getenv('DB_NAME'),
+            'autocommit': True,
+            'use_unicode': True,
+            'charset': 'utf8mb4',
+            'connect_timeout': 60,
+            'sql_mode': 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'
+        }
+        
+        # Add SSL configuration for TiDB Cloud
+        # TiDB Cloud requires SSL but handles certificates automatically
+        if os.getenv('DB_HOST') and 'tidbcloud.com' in os.getenv('DB_HOST'):
+            config['ssl_disabled'] = False
+            config['ssl_verify_cert'] = True
+            config['ssl_verify_identity'] = False
+        else:
+            # For local development, you might disable SSL
+            config['ssl_disabled'] = True
+            
+        return mysql.connector.connect(**config)
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        raise
+        
 # Routes
 @app.route('/')
 def index():
@@ -398,6 +430,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
 """
+
 
 
 
