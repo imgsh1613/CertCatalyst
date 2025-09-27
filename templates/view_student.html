@@ -178,22 +178,9 @@
         `);
         }
     
-        document.addEventListener('DOMContentLoaded', function() {
-            const viewLinks = document.querySelectorAll('a[href*="cloudinary.com"]');
-            viewLinks.forEach(link => {
-                if (link.textContent.trim() === 'View') {
-                    const originalHref = link.href;
-                    link.href = '#';
-                    link.onclick = function(e) {
-                        e.preventDefault();
-                        openPDF(originalHref, 'Certificate');
-                        return false;
-                    };
-                }
-            });
-        });
     </script>
 </body>
 
 </html>
+
 
