@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Flask, request, render_template, redirect, url_for, flash, session, jsonify
 import mysql.connector
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
+# from werkzeug.utils import secure_filename
 import cloudinary
 import cloudinary.uploader
 import ssl
@@ -12,12 +12,17 @@ import ssl
 app = Flask(__name__)
 
 # Use environment variables for production
-app.secret_key = os.getenv('SECRET_KEY', 'certification_tracker_secret_key')
-app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/uploads/certificates')
-app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'jpg', 'jpeg', 'png'}
+# app.secret_key = os.getenv('SECRET_KEY', 'certification_tracker_secret_key') for local
 
+secret_key = os.getenv('SECRET_KEY')
+if not secret_key:
+    raise ValueError("FATAL ERROR: SECRET_KEY environment variable not set.")
+app.secret_key = secret_key
+
+# app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/uploads/certificates')
+app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'jpg', 'jpeg', 'png'}
 # Ensure the upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 #Cloudinary Configuration
 cloudinary.config(
@@ -29,16 +34,17 @@ cloudinary.config(
 # Database connection function with environment variables
 def get_db_connection():
     return mysql.connector.connect(
-        host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-        port = 4000,
-        user = "39KZ8xro8WmzgLR.root",
-        password = "2X6qCCuMmD4Vt3qv",
-        database = "certification_tracker",
+        host = os.getenv('DB_HOST'),
+        port = int(os.getenv('DB_PORT',4000)),
+        user = os.getenv('DB_USER'),
+        password = os.getenv('DB_PASSWORD'),
+        database = os.getenv('DB_NAME'),
+        ssl_ca = 'isrgrootx1.pem'
     )
-
+'''
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
+'''
 # Routes
 @app.route('/')
 def index():
@@ -385,11 +391,12 @@ def verify_certificate(certificate_id, status):
 def health_check():
     return {'status': 'healthy'}, 200
 """
-
+"""
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
+"""
 
 
 
