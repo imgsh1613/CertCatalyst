@@ -94,7 +94,7 @@
             </div>
         </main>
     </div>
-
+    
     <script>
     function openPDF(url, filename) {
         console.log('Opening PDF:', url);
@@ -104,7 +104,7 @@
             return;
         }
         
-        // Create a comprehensive PDF viewer with multiple fallback options
+        // Create PDF viewer with immediate fallback detection
         const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
         if (!newWindow) {
             alert('Popup blocked! Please allow popups and try again.');
@@ -122,223 +122,223 @@
                     body { 
                         margin: 0; 
                         padding: 0; 
-                        background: #2c2c2c; 
-                        font-family: Arial, sans-serif; 
-                        color: white;
-                        overflow: hidden;
+                        background: #f5f5f5; 
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                        color: #333;
                     }
                     .header { 
-                        background: #1a1a1a; 
-                        padding: 15px; 
+                        background: #2c3e50; 
+                        padding: 20px; 
                         display: flex; 
                         justify-content: space-between; 
                         align-items: center;
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                     }
                     .header h2 { 
                         margin: 0; 
-                        font-size: 18px; 
-                        color: #fff;
+                        font-size: 20px; 
+                        color: white;
+                        font-weight: 300;
                     }
                     .controls { 
                         display: flex; 
                         gap: 10px; 
                     }
                     .btn { 
-                        background: #4CAF50; 
+                        background: #3498db; 
                         color: white; 
                         border: none; 
-                        padding: 8px 16px; 
-                        border-radius: 4px; 
+                        padding: 10px 20px; 
+                        border-radius: 6px; 
                         cursor: pointer; 
                         font-size: 14px;
-                        transition: background 0.3s;
+                        transition: all 0.3s ease;
+                        font-weight: 500;
                     }
-                    .btn:hover { background: #45a049; }
-                    .btn.secondary { background: #2196F3; }
-                    .btn.secondary:hover { background: #1976D2; }
-                    .btn.danger { background: #f44336; }
-                    .btn.danger:hover { background: #d32f2f; }
+                    .btn:hover { 
+                        background: #2980b9; 
+                        transform: translateY(-1px);
+                    }
+                    .btn.success { background: #27ae60; }
+                    .btn.success:hover { background: #229954; }
+                    .btn.danger { background: #e74c3c; }
+                    .btn.danger:hover { background: #c0392b; }
                     
-                    .viewer-container { 
-                        height: calc(100vh - 70px); 
-                        position: relative;
-                        background: #f0f0f0;
-                    }
-                    .pdf-frame { 
-                        width: 100%; 
-                        height: 100%; 
-                        border: none; 
-                        background: white;
-                    }
-                    .loading { 
-                        position: absolute; 
-                        top: 50%; 
-                        left: 50%; 
-                        transform: translate(-50%, -50%);
+                    .content { 
+                        padding: 40px; 
                         text-align: center;
-                        color: #333;
+                        min-height: calc(100vh - 100px);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
                     }
-                    .fallback { 
-                        position: absolute; 
-                        top: 50%; 
-                        left: 50%; 
-                        transform: translate(-50%, -50%);
-                        text-align: center; 
+                    .options-container {
                         background: white;
-                        color: #333;
                         padding: 40px;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                        max-width: 500px;
+                        border-radius: 12px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                        max-width: 600px;
+                        width: 100%;
                     }
-                    .fallback h3 { color: #e74c3c; margin-top: 0; }
-                    .fallback p { margin: 15px 0; line-height: 1.5; }
-                    .download-btn { 
-                        background: #2196F3; 
+                    .icon { 
+                        font-size: 64px; 
+                        margin-bottom: 20px;
+                        color: #3498db;
+                    }
+                    .options-container h2 { 
+                        color: #2c3e50; 
+                        margin-bottom: 15px;
+                        font-weight: 300;
+                    }
+                    .options-container p { 
+                        margin: 15px 0; 
+                        line-height: 1.6; 
+                        color: #7f8c8d;
+                    }
+                    .action-buttons {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 15px;
+                        justify-content: center;
+                        margin: 30px 0;
+                    }
+                    .action-btn { 
+                        background: #3498db; 
                         color: white; 
-                        padding: 12px 24px; 
+                        padding: 15px 30px; 
                         text-decoration: none; 
-                        border-radius: 4px; 
-                        display: inline-block;
-                        margin: 10px 5px;
-                        font-weight: bold;
+                        border-radius: 8px; 
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 10px;
+                        font-weight: 500;
+                        font-size: 16px;
+                        transition: all 0.3s ease;
+                        border: none;
+                        cursor: pointer;
                     }
-                    .spinner {
-                        border: 4px solid #f3f3f3;
-                        border-top: 4px solid #3498db;
-                        border-radius: 50%;
-                        width: 50px;
-                        height: 50px;
-                        animation: spin 2s linear infinite;
-                        margin: 20px auto;
+                    .action-btn:hover {
+                        background: #2980b9;
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 20px rgba(52,152,219,0.3);
                     }
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
+                    .action-btn.success { background: #27ae60; }
+                    .action-btn.success:hover { 
+                        background: #229954;
+                        box-shadow: 0 4px 20px rgba(39,174,96,0.3);
+                    }
+                    .help-text {
+                        background: #ecf0f1;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin-top: 25px;
+                        font-size: 14px;
+                        color: #7f8c8d;
+                        line-height: 1.5;
+                    }
+                    @media (max-width: 600px) {
+                        .content { padding: 20px; }
+                        .options-container { padding: 25px; }
+                        .action-buttons { flex-direction: column; }
+                        .header { padding: 15px; }
+                        .controls { flex-direction: column; gap: 8px; }
                     }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <h2>📄 ${filename || 'Certificate'}</h2>
+                    <h2>📄 ${filename || 'Certificate Viewer'}</h2>
                     <div class="controls">
-                        <button class="btn secondary" onclick="openOriginal()">Open in New Tab</button>
-                        <button class="btn secondary" onclick="downloadPDF()">Download PDF</button>
-                        <button class="btn secondary" onclick="reloadPDF()">Reload</button>
-                        <button class="btn danger" onclick="window.close()">Close</button>
+                        <button class="btn success" onclick="tryDownload()">⬇️ Download</button>
+                        <button class="btn" onclick="openOriginal()">🔗 Open Original</button>
+                        <button class="btn danger" onclick="window.close()">✕ Close</button>
                     </div>
                 </div>
                 
-                <div class="viewer-container">
-                    <div id="loading" class="loading">
-                        <div class="spinner"></div>
-                        <p>Loading certificate...</p>
-                    </div>
-                    
-                    <iframe id="pdfFrame" 
-                            class="pdf-frame" 
-                            src="${url}" 
-                            style="display: none;"
-                            onload="onPDFLoad()" 
-                            onerror="onPDFError()">
-                    </iframe>
-                    
-                    <div id="fallback" class="fallback" style="display: none;">
-                        <h3>⚠️ Unable to Display PDF</h3>
-                        <p>Your browser might not support PDF viewing, or there was an issue loading the file.</p>
-                        <p><strong>Try these options:</strong></p>
-                        <a href="${url}" target="_blank" class="download-btn">🔗 Open Original Link</a>
-                        <a href="${url}" download="${filename || 'certificate.pdf'}" class="download-btn">⬇️ Download PDF</a>
-                        <br><br>
-                        <p style="font-size: 12px; color: #666;">
-                            If problems persist, try using a different browser or contact support.
-                        </p>
+                <div class="content">
+                    <div class="options-container">
+                        <div class="icon">📋</div>
+                        <h2>Certificate Ready for Viewing</h2>
+                        <p>Your certificate is available. Choose how you'd like to access it:</p>
+                        
+                        <div class="action-buttons">
+                            <button class="action-btn success" onclick="tryDownload()">
+                                ⬇️ Download PDF
+                            </button>
+                            <button class="action-btn" onclick="openOriginal()">
+                                🌐 Open in Browser
+                            </button>
+                            <button class="action-btn" onclick="tryView()">
+                                👁️ Try Viewer Again
+                            </button>
+                        </div>
+                        
+                        <div class="help-text">
+                            <strong>💡 Tips:</strong><br>
+                            • <strong>Download PDF:</strong> Saves the certificate to your computer<br>
+                            • <strong>Open in Browser:</strong> Opens in a new tab (may prompt to download)<br>
+                            • <strong>Having issues?</strong> Try using a different browser like Chrome or Firefox
+                        </div>
                     </div>
                 </div>
                 
                 <script>
-                    let loadTimeout;
-                    
-                    function onPDFLoad() {
-                        console.log('PDF loaded successfully');
-                        clearTimeout(loadTimeout);
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('pdfFrame').style.display = 'block';
-                    }
-                    
-                    function onPDFError() {
-                        console.log('PDF load error');
-                        showFallback();
-                    }
-                    
-                    function showFallback() {
-                        clearTimeout(loadTimeout);
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('pdfFrame').style.display = 'none';
-                        document.getElementById('fallback').style.display = 'block';
-                    }
-                    
-                    function openOriginal() {
-                        window.open('${url}', '_blank');
-                    }
-                    
-                    function downloadPDF() {
+                    function tryDownload() {
+                        console.log('Downloading PDF:', '${url}');
                         const a = document.createElement('a');
                         a.href = '${url}';
                         a.download = '${filename || 'certificate.pdf'}';
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
-                    }
-                    
-                    function reloadPDF() {
-                        document.getElementById('fallback').style.display = 'none';
-                        document.getElementById('pdfFrame').style.display = 'none';
-                        document.getElementById('loading').style.display = 'block';
                         
-                        const frame = document.getElementById('pdfFrame');
-                        frame.src = '';
+                        // Show confirmation
                         setTimeout(() => {
-                            frame.src = '${url}';
-                            startLoadTimeout();
-                        }, 100);
+                            alert('Download started! Check your Downloads folder.');
+                        }, 500);
                     }
                     
-                    function startLoadTimeout() {
-                        clearTimeout(loadTimeout);
-                        loadTimeout = setTimeout(() => {
-                            console.log('PDF load timeout');
-                            showFallback();
-                        }, 10000); // 10 second timeout
-                    }
-                    
-                    // Start the timeout when page loads
-                    startLoadTimeout();
-                    
-                    // Additional fallback - if iframe doesn't load in 8 seconds, show options
-                    setTimeout(() => {
-                        const frame = document.getElementById('pdfFrame');
-                        if (frame.style.display === 'none') {
-                            console.log('PDF load timeout - showing fallback');
-                            showFallback();
+                    function openOriginal() {
+                        console.log('Opening original URL:', '${url}');
+                        const newTab = window.open('${url}', '_blank');
+                        if (!newTab) {
+                            alert('Popup blocked! Please allow popups or try downloading instead.');
                         }
-                    }, 8000);
+                    }
+                    
+                    function tryView() {
+                        // Replace content with iframe attempt
+                        document.querySelector('.content').innerHTML = \`
+                            <div style="width: 100%; height: 600px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                                <iframe src="${url}" 
+                                        style="width: 100%; height: 100%; border: none;"
+                                        onload="console.log('PDF loaded in iframe')"
+                                        onerror="showFallbackAgain()">
+                                </iframe>
+                            </div>
+                            <p style="margin-top: 15px; color: #7f8c8d;">
+                                If the PDF doesn't appear above, use the Download or Open in Browser options.
+                            </p>
+                        \`;
+                    }
+                    
+                    // Log for debugging
+                    console.log('Certificate viewer loaded for:', '${url}');
                 <\/script>
             </body>
             </html>
         `);
     }
-    
     // Test function
     console.log('PDF viewer functions loaded');
     // Test if function is loaded
     console.log('openPDF function loaded:', typeof openPDF === 'function');
     </script>
-
+    
 </body>
 
 </html>
+
 
 
 
