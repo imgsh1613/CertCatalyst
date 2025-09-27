@@ -59,8 +59,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="{{ cert.certificate_file }}" target="_blank"
-                                       class="btn btn-sm" target="_blank">View</a>
+                                    <button onclick="openPDF('{{ cert.certificate_file }}', '{{ cert.certificate_name }}')" class="btn btn-sm">View</button>
                                 </td>
                             </tr>
                             {% else %}
@@ -105,7 +104,111 @@
             </div>
         </main>
     </div>
+
+    <!-- Add this JavaScript to both view_student.html and student_dashboard.html before closing </body> tag -->
+
+<script>
+        function openPDF(url, filename) {
+            // Create a more robust PDF viewer
+            const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                // Fallback if popup is blocked
+                window.location.href = url;
+                return;
+            }
+            
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${filename || 'Certificate'}</title>
+                    <style>
+                        body { margin: 0; padding: 0; background: #f0f0f0; }
+                        .container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
+                        .toolbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+                        .toolbar button { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+                        .toolbar button:hover { background: #666; }
+                        .pdf-container { flex: 1; overflow: hidden; }
+                        iframe { width: 100%; height: 100%; border: none; }
+                        .error { padding: 20px; text-align: center; color: #e74a3b; }
+                        .fallback { padding: 20px; text-align: center; }
+                        .fallback a { color: #4e73df; text-decoration: none; padding: 10px 20px; background: #f8f9fc; border-radius: 4px; display: inline-block; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="toolbar">
+                            <span>Certificate Viewer</span>
+                            <div>
+                                <button onclick="window.open('${url}', '_blank')">Open in New Tab</button>
+                                <button onclick="downloadPDF('${url}', '${filename || 'certificate.pdf'}')">Download</button>
+                                <button onclick="window.close()">Close</button>
+                            </div>
+                        </div>
+                        <div class="pdf-container">
+                            <iframe src="${url}" 
+                                    onload="console.log('PDF loaded successfully')"
+                                    onerror="showError()">
+                            </iframe>
+                            <div id="fallback" class="fallback" style="display: none;">
+                                <h3>Unable to display PDF</h3>
+                                <p>Your browser may not support PDF viewing.</p>
+                                <a href="${url}" target="_blank">Click here to download the certificate</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <script>
+                        function downloadPDF(url, filename) {
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }
+                        
+                        function showError() {
+                            document.getElementById('fallback').style.display = 'block';
+                            document.querySelector('iframe').style.display = 'none';
+                        }
+                        
+                        // Fallback for browsers that don't support PDF viewing
+                        setTimeout(() => {
+                            const iframe = document.querySelector('iframe');
+                            try {
+                                if (!iframe.contentDocument && !iframe.contentWindow) {
+                                    showError();
+                                }
+                            } catch(e) {
+                                console.log('PDF viewer fallback triggered');
+                            }
+                        }, 3000);
+                    </script>
+                </body>
+                </html>
+            `);
+        }
+        
+        // Update your existing "View" buttons to use this function
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find all certificate view links and update them
+            const viewLinks = document.querySelectorAll('a[href*="cloudinary.com"]');
+            viewLinks.forEach(link => {
+                if (link.textContent.trim() === 'View') {
+                    const originalHref = link.href;
+                    link.href = '#';
+                    link.onclick = function(e) {
+                        e.preventDefault();
+                        openPDF(originalHref, 'Certificate');
+                        return false;
+                    };
+                }
+            });
+        });
+    </script>
     
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
+
