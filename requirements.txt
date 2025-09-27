@@ -1,6 +1,8 @@
 Flask
 mysql.connector
+PyMySQL
 Werkzeug
 python-dotenv
 gunicorn
 cloudinary 
+
