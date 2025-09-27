@@ -97,18 +97,17 @@
 
     <script>
     function openPDF(url, filename) {
-        console.log('openPDF called with:', url, filename);
+        console.log('Opening PDF:', url);
         
         if (!url || url.trim() === '') {
             alert('No certificate URL found!');
             return;
         }
         
-        // Create a more robust PDF viewer
-        const newWindow = window.open('', '_blank');
+        // Create a comprehensive PDF viewer with multiple fallback options
+        const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
         if (!newWindow) {
-            alert('Popup blocked! Opening in same tab...');
-            window.location.href = url;
+            alert('Popup blocked! Please allow popups and try again.');
             return;
         }
         
@@ -116,59 +115,223 @@
             <!DOCTYPE html>
             <html>
             <head>
-                <title>${filename || 'Certificate'}</title>
+                <title>Certificate: ${filename || 'PDF Document'}</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { margin: 0; padding: 0; background: #f0f0f0; font-family: Arial, sans-serif; }
-                    .container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
-                    .toolbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-                    .toolbar button { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
-                    .toolbar button:hover { background: #666; }
-                    .pdf-container { flex: 1; overflow: hidden; }
-                    iframe { width: 100%; height: 100%; border: none; }
-                    .fallback { padding: 20px; text-align: center; }
-                    .fallback a { color: #4e73df; text-decoration: none; padding: 10px 20px; background: #f8f9fc; border-radius: 4px; display: inline-block; }
+                    body { 
+                        margin: 0; 
+                        padding: 0; 
+                        background: #2c2c2c; 
+                        font-family: Arial, sans-serif; 
+                        color: white;
+                        overflow: hidden;
+                    }
+                    .header { 
+                        background: #1a1a1a; 
+                        padding: 15px; 
+                        display: flex; 
+                        justify-content: space-between; 
+                        align-items: center;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                    }
+                    .header h2 { 
+                        margin: 0; 
+                        font-size: 18px; 
+                        color: #fff;
+                    }
+                    .controls { 
+                        display: flex; 
+                        gap: 10px; 
+                    }
+                    .btn { 
+                        background: #4CAF50; 
+                        color: white; 
+                        border: none; 
+                        padding: 8px 16px; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 14px;
+                        transition: background 0.3s;
+                    }
+                    .btn:hover { background: #45a049; }
+                    .btn.secondary { background: #2196F3; }
+                    .btn.secondary:hover { background: #1976D2; }
+                    .btn.danger { background: #f44336; }
+                    .btn.danger:hover { background: #d32f2f; }
+                    
+                    .viewer-container { 
+                        height: calc(100vh - 70px); 
+                        position: relative;
+                        background: #f0f0f0;
+                    }
+                    .pdf-frame { 
+                        width: 100%; 
+                        height: 100%; 
+                        border: none; 
+                        background: white;
+                    }
+                    .loading { 
+                        position: absolute; 
+                        top: 50%; 
+                        left: 50%; 
+                        transform: translate(-50%, -50%);
+                        text-align: center;
+                        color: #333;
+                    }
+                    .fallback { 
+                        position: absolute; 
+                        top: 50%; 
+                        left: 50%; 
+                        transform: translate(-50%, -50%);
+                        text-align: center; 
+                        background: white;
+                        color: #333;
+                        padding: 40px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                        max-width: 500px;
+                    }
+                    .fallback h3 { color: #e74c3c; margin-top: 0; }
+                    .fallback p { margin: 15px 0; line-height: 1.5; }
+                    .download-btn { 
+                        background: #2196F3; 
+                        color: white; 
+                        padding: 12px 24px; 
+                        text-decoration: none; 
+                        border-radius: 4px; 
+                        display: inline-block;
+                        margin: 10px 5px;
+                        font-weight: bold;
+                    }
+                    .spinner {
+                        border: 4px solid #f3f3f3;
+                        border-top: 4px solid #3498db;
+                        border-radius: 50%;
+                        width: 50px;
+                        height: 50px;
+                        animation: spin 2s linear infinite;
+                        margin: 20px auto;
+                    }
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
                 </style>
             </head>
             <body>
-                <div class="container">
-                    <div class="toolbar">
-                        <span>Certificate Viewer - ${filename || 'Certificate'}</span>
-                        <div>
-                            <button onclick="window.open('${url}', '_blank')">Open Original</button>
-                            <button onclick="downloadPDF('${url}', '${filename || 'certificate.pdf'}')">Download</button>
-                            <button onclick="window.close()">Close</button>
-                        </div>
+                <div class="header">
+                    <h2>📄 ${filename || 'Certificate'}</h2>
+                    <div class="controls">
+                        <button class="btn secondary" onclick="openOriginal()">Open in New Tab</button>
+                        <button class="btn secondary" onclick="downloadPDF()">Download PDF</button>
+                        <button class="btn secondary" onclick="reloadPDF()">Reload</button>
+                        <button class="btn danger" onclick="window.close()">Close</button>
                     </div>
-                    <div class="pdf-container">
-                        <iframe src="${url}" onload="console.log('PDF loaded')" onerror="showFallback()"></iframe>
-                        <div id="fallback" class="fallback" style="display: none;">
-                            <h3>Unable to display PDF</h3>
-                            <p>Your browser may not support PDF viewing.</p>
-                            <a href="${url}" target="_blank">Click here to download the certificate</a>
-                        </div>
+                </div>
+                
+                <div class="viewer-container">
+                    <div id="loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading certificate...</p>
+                    </div>
+                    
+                    <iframe id="pdfFrame" 
+                            class="pdf-frame" 
+                            src="${url}" 
+                            style="display: none;"
+                            onload="onPDFLoad()" 
+                            onerror="onPDFError()">
+                    </iframe>
+                    
+                    <div id="fallback" class="fallback" style="display: none;">
+                        <h3>⚠️ Unable to Display PDF</h3>
+                        <p>Your browser might not support PDF viewing, or there was an issue loading the file.</p>
+                        <p><strong>Try these options:</strong></p>
+                        <a href="${url}" target="_blank" class="download-btn">🔗 Open Original Link</a>
+                        <a href="${url}" download="${filename || 'certificate.pdf'}" class="download-btn">⬇️ Download PDF</a>
+                        <br><br>
+                        <p style="font-size: 12px; color: #666;">
+                            If problems persist, try using a different browser or contact support.
+                        </p>
                     </div>
                 </div>
                 
                 <script>
-                    function downloadPDF(url, filename) {
+                    let loadTimeout;
+                    
+                    function onPDFLoad() {
+                        console.log('PDF loaded successfully');
+                        clearTimeout(loadTimeout);
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('pdfFrame').style.display = 'block';
+                    }
+                    
+                    function onPDFError() {
+                        console.log('PDF load error');
+                        showFallback();
+                    }
+                    
+                    function showFallback() {
+                        clearTimeout(loadTimeout);
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('pdfFrame').style.display = 'none';
+                        document.getElementById('fallback').style.display = 'block';
+                    }
+                    
+                    function openOriginal() {
+                        window.open('${url}', '_blank');
+                    }
+                    
+                    function downloadPDF() {
                         const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
+                        a.href = '${url}';
+                        a.download = '${filename || 'certificate.pdf'}';
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                     }
                     
-                    function showFallback() {
-                        document.getElementById('fallback').style.display = 'block';
-                        document.querySelector('iframe').style.display = 'none';
+                    function reloadPDF() {
+                        document.getElementById('fallback').style.display = 'none';
+                        document.getElementById('pdfFrame').style.display = 'none';
+                        document.getElementById('loading').style.display = 'block';
+                        
+                        const frame = document.getElementById('pdfFrame');
+                        frame.src = '';
+                        setTimeout(() => {
+                            frame.src = '${url}';
+                            startLoadTimeout();
+                        }, 100);
                     }
+                    
+                    function startLoadTimeout() {
+                        clearTimeout(loadTimeout);
+                        loadTimeout = setTimeout(() => {
+                            console.log('PDF load timeout');
+                            showFallback();
+                        }, 10000); // 10 second timeout
+                    }
+                    
+                    // Start the timeout when page loads
+                    startLoadTimeout();
+                    
+                    // Additional fallback - if iframe doesn't load in 8 seconds, show options
+                    setTimeout(() => {
+                        const frame = document.getElementById('pdfFrame');
+                        if (frame.style.display === 'none') {
+                            console.log('PDF load timeout - showing fallback');
+                            showFallback();
+                        }
+                    }, 8000);
                 <\/script>
             </body>
             </html>
         `);
     }
     
+    // Test function
+    console.log('PDF viewer functions loaded');
     // Test if function is loaded
     console.log('openPDF function loaded:', typeof openPDF === 'function');
     </script>
@@ -176,6 +339,7 @@
 </body>
 
 </html>
+
 
 
 
