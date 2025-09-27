@@ -59,7 +59,6 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <button onclick="testURL('{{ cert.certificate_file }}')" class="btn btn-sm" style="background: orange;">Debug URL</button>
                                     <button onclick="openPDF('{{ cert.certificate_file }}', '{{ cert.certificate_name }}')" class="btn btn-sm">View</button>
                                 </td>
                             </tr>
@@ -106,8 +105,6 @@
         </main>
     </div>
 
-    <!-- Replace the entire JavaScript section at the bottom of student_dashboard.html with this: -->
-
 <script>
 function openPDF(url, filename) {
     console.log('openPDF called with:', url, filename);
@@ -117,7 +114,6 @@ function openPDF(url, filename) {
         return;
     }
     
-    // Create a more robust PDF viewer
     const newWindow = window.open('', '_blank');
     if (!newWindow) {
         alert('Popup blocked! Opening in same tab...');
@@ -193,6 +189,7 @@ console.log('openPDF function loaded:', typeof openPDF === 'function');
 
 </body>
 </html>
+
 
 
 
