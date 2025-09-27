@@ -408,39 +408,6 @@ def view_student(student_id):
         flash(f'Database error: {str(e)}', 'danger')
         return redirect(url_for('teacher_dashboard'))
 
-# Add this temporary route to your app.py to check existing certificates
-@app.route('/check_certificates')
-def check_certificates():
-    if 'user_id' not in session or session['user_type'] != 'teacher':
-        return "Access denied"
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT certificate_id, certificate_name, certificate_file FROM certificates')
-        certificates = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        
-        result = "<h2>Certificate URLs Check</h2>"
-        for cert in certificates:
-            result += f"<p><strong>ID:</strong> {cert['certificate_id']}<br>"
-            result += f"<strong>Name:</strong> {cert['certificate_name']}<br>"
-            result += f"<strong>URL:</strong> <a href='{cert['certificate_file']}' target='_blank'>{cert['certificate_file']}</a><br>"
-            
-            # Check if URL contains correct patterns
-            if 'resource_type=raw' in cert['certificate_file'] or '/raw/' in cert['certificate_file']:
-                result += "<span style='color:green'>✓ Correct raw resource type</span><br>"
-            elif 'cloudinary.com' in cert['certificate_file']:
-                result += "<span style='color:red'>❌ Wrong resource type - needs to be 'raw' for PDFs</span><br>"
-            else:
-                result += "<span style='color:orange'>⚠️ Non-Cloudinary URL</span><br>"
-            result += "<br></p>"
-        
-        return result
-    except Exception as e:
-        return f"Error: {str(e)}"
-
 @app.route('/verify_certificate/<int:certificate_id>/<status>')
 def verify_certificate(certificate_id, status):
     if 'user_id' not in session or session['user_type'] != 'teacher':
@@ -482,6 +449,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
 """
+
 
 
 
