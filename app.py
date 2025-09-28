@@ -82,7 +82,7 @@ def login():
         
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
             cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
             user = cursor.fetchone()
             cursor.close()
@@ -579,6 +579,7 @@ def verify_certificate(certificate_id, status):
     # Get the referer URL to redirect back to the same page
     referrer = request.referrer or url_for('teacher_dashboard')
     return redirect(referrer)
+
 
 
 
