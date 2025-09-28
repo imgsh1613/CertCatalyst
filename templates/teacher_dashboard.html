@@ -18,6 +18,7 @@
             </div>
             <ul class="nav-links">
                 <li class="active"><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('teacher_courses') }}">My Courses</a></li>
                 <li><a href="{{ url_for('add_student') }}">Add Student</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             </ul>
@@ -26,6 +27,7 @@
         <main class="main-content">
             <header>
                 <h1>Teacher Dashboard</h1>
+                <br></br>
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
@@ -239,3 +241,4 @@
     </script>
 </body>
 </html>
+
