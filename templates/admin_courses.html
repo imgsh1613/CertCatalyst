@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Courses - Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">Admin Panel</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('admin_create_user') }}">Create User</a></li>
+                <li class="active"><a href="{{ url_for('admin_courses') }}">Manage Courses</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Manage Courses</h1>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-back">Back to Dashboard</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <div class="courses-list">
+                <h3>All Courses</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Course Name</th>
+                                <th>Description</th>
+                                <th>Certificate Template</th>
+                                <th>Year</th>
+                                <th>Created By</th>
+                                <th>Created Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in courses %}
+                            <tr>
+                                <td><strong>{{ course.course_name }}</strong></td>
+                                <td>{{ course.course_description or 'No description' }}</td>
+                                <td>{{ course.certificate_template }}</td>
+                                <td>{{ course.course_year }}</td>
+                                <td>{{ course.created_by_name or 'Unknown' }}</td>
+                                <td>{{ course.created_at.strftime('%Y-%m-%d') if course.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6">No courses created yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
