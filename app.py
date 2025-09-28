@@ -12,38 +12,19 @@ import pymysql.cursors
 
 app = Flask(__name__)
 
-# Use environment variables for production
-# app.secret_key = os.getenv('SECRET_KEY', 'certification_tracker_secret_key') for local
-
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
     raise ValueError("FATAL ERROR: SECRET_KEY environment variable not set.")
 app.secret_key = secret_key
 
-# app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/uploads/certificates')
 app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'jpg', 'jpeg', 'png'}
-# Ensure the upload directory exists
-# os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-#Cloudinary Configuration
 cloudinary.config(
     cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
     api_key=os.getenv('CLOUDINARY_API_KEY'),
     api_secret=os.getenv('CLOUDINARY_API_SECRET')
 )
-'''
-# Database connection function with environment variables
-def get_db_connection():
-    return mysql.connector.connect(
-        host = os.getenv('DB_HOST'),
-        port = int(os.getenv('DB_PORT',4000)),
-        user = os.getenv('DB_USER'),
-        password = os.getenv('DB_PASSWORD'),
-        database = os.getenv('DB_NAME'),
-        ssl_ca = 'isrgrootx1.pem',
-        ssl_verify_cert = True
-    )
-'''
+
 def get_db_connection():
     return pymysql.connect(
         host=os.getenv('DB_HOST'),
@@ -61,12 +42,33 @@ def get_db_connection():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+def admin_required(f):
+    """Decorator to require admin access"""
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or session.get('user_type') != 'admin':
+            flash('Admin access required', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+def teacher_required(f):
+    """Decorator to require teacher access"""
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or session.get('user_type') != 'teacher':
+            flash('Teacher access required', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
 
 # Routes
 @app.route('/')
 def index():
     if 'user_id' in session:
-        if session['user_type'] == 'teacher':
+        if session['user_type'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif session['user_type'] == 'teacher':
             return redirect(url_for('teacher_dashboard'))
         else:
             return redirect(url_for('student_dashboard'))
@@ -80,7 +82,7 @@ def login():
         
         try:
             conn = get_db_connection()
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
             user = cursor.fetchone()
             cursor.close()
@@ -92,7 +94,9 @@ def login():
                 session['user_type'] = user['user_type']
                 session['full_name'] = user['full_name']
                 
-                if user['user_type'] == 'teacher':
+                if user['user_type'] == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                elif user['user_type'] == 'teacher':
                     return redirect(url_for('teacher_dashboard'))
                 else:
                     return redirect(url_for('student_dashboard'))
@@ -138,17 +142,113 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
-@app.route('/teacher/dashboard')
-def teacher_dashboard():
-    if 'user_id' not in session or session['user_type'] != 'teacher':
-        flash('Access denied. Please login as a teacher.', 'danger')
-        return redirect(url_for('login'))
+# Admin Routes
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get statistics
+        cursor.execute('SELECT COUNT(*) as count FROM users WHERE user_type = "teacher"')
+        total_teachers = cursor.fetchone()['count']
+        
+        cursor.execute('SELECT COUNT(*) as count FROM users WHERE user_type = "student"')
+        total_students = cursor.fetchone()['count']
+        
+        cursor.execute('SELECT COUNT(*) as count FROM courses')
+        total_courses = cursor.fetchone()['count']
+        
+        cursor.execute('SELECT COUNT(*) as count FROM certificates')
+        total_certificates = cursor.fetchone()['count']
+        
+        # Get recent users
+        cursor.execute('''
+            SELECT user_id, username, full_name, email, user_type, created_at 
+            FROM users 
+            WHERE user_type IN ('teacher', 'student')
+            ORDER BY created_at DESC 
+            LIMIT 10
+        ''')
+        recent_users = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return render_template('admin_dashboard.html',
+                              total_teachers=total_teachers,
+                              total_students=total_students,
+                              total_courses=total_courses,
+                              total_certificates=total_certificates,
+                              recent_users=recent_users)
+    except Exception as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return render_template('admin_dashboard.html',
+                              total_teachers=0, total_students=0,
+                              total_courses=0, total_certificates=0,
+                              recent_users=[])
+
+@app.route('/admin/create_user', methods=['GET', 'POST'])
+@admin_required
+def admin_create_user():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        user_type = request.form['user_type']
+        full_name = request.form['full_name']
+        
+        hashed_password = generate_password_hash(password)
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                'INSERT INTO users (username, password, email, user_type, full_name) VALUES (%s, %s, %s, %s, %s)',
+                (username, hashed_password, email, user_type, full_name)
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+            flash(f'{user_type.title()} created successfully!', 'success')
+            return redirect(url_for('admin_dashboard'))
+        except mysql.connector.Error as err:
+            flash(f'User creation failed: {str(err)}', 'danger')
+        except Exception as e:
+            flash(f'Database error: {str(e)}', 'danger')
     
+    return render_template('admin_create_user.html')
+
+@app.route('/admin/courses')
+@admin_required
+def admin_courses():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT c.*, u.full_name as created_by_name 
+            FROM courses c 
+            LEFT JOIN users u ON c.created_by = u.user_id 
+            ORDER BY c.created_at DESC
+        ''')
+        courses = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template('admin_courses.html', courses=courses)
+    except Exception as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return render_template('admin_courses.html', courses=[])
+
+# Teacher Routes
+@app.route('/teacher/dashboard')
+@teacher_required
+def teacher_dashboard():
     teacher_id = session['user_id']
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         
         # Get total number of students
         cursor.execute(
@@ -193,6 +293,93 @@ def teacher_dashboard():
                               certificates_by_course=[],
                               certificates_by_student=[])
 
+@app.route('/teacher/courses')
+@teacher_required
+def teacher_courses():
+    teacher_id = session['user_id']
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('SELECT * FROM courses WHERE created_by = %s ORDER BY created_at DESC', (teacher_id,))
+        courses = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template('teacher_courses.html', courses=courses)
+    except Exception as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return render_template('teacher_courses.html', courses=[])
+
+@app.route('/teacher/add_course', methods=['GET', 'POST'])
+@teacher_required
+def teacher_add_course():
+    if request.method == 'POST':
+        course_name = request.form['course_name']
+        course_description = request.form['course_description']
+        certificate_template = request.form['certificate_template']
+        course_year = request.form['course_year']
+        teacher_id = session['user_id']
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                '''INSERT INTO courses (course_name, course_description, certificate_template, course_year, created_by) 
+                   VALUES (%s, %s, %s, %s, %s)''',
+                (course_name, course_description, certificate_template, course_year, teacher_id)
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+            flash('Course added successfully!', 'success')
+            return redirect(url_for('teacher_courses'))
+        except Exception as e:
+            flash(f'Error adding course: {str(e)}', 'danger')
+    
+    return render_template('teacher_add_course.html')
+
+@app.route('/teacher/edit_course/<int:course_id>', methods=['GET', 'POST'])
+@teacher_required
+def teacher_edit_course(course_id):
+    teacher_id = session['user_id']
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verify teacher owns this course
+        cursor.execute('SELECT * FROM courses WHERE course_id = %s AND created_by = %s', (course_id, teacher_id))
+        course = cursor.fetchone()
+        
+        if not course:
+            cursor.close()
+            conn.close()
+            flash('Course not found or access denied', 'danger')
+            return redirect(url_for('teacher_courses'))
+        
+        if request.method == 'POST':
+            course_name = request.form['course_name']
+            course_description = request.form['course_description']
+            certificate_template = request.form['certificate_template']
+            course_year = request.form['course_year']
+            
+            cursor.execute(
+                '''UPDATE courses SET course_name = %s, course_description = %s, 
+                   certificate_template = %s, course_year = %s WHERE course_id = %s''',
+                (course_name, course_description, certificate_template, course_year, course_id)
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+            flash('Course updated successfully!', 'success')
+            return redirect(url_for('teacher_courses'))
+        
+        cursor.close()
+        conn.close()
+        return render_template('teacher_edit_course.html', course=course)
+    except Exception as e:
+        flash(f'Database error: {str(e)}', 'danger')
+        return redirect(url_for('teacher_courses'))
+
 @app.route('/student/dashboard')
 def student_dashboard():
     if 'user_id' not in session or session['user_type'] != 'student':
@@ -203,7 +390,7 @@ def student_dashboard():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         
         # Get student's certificates
         cursor.execute('''
@@ -250,47 +437,16 @@ def upload_certificate():
     
     if file and allowed_file(file.filename):
         try:
-            filename = file.filename.lower()
-            print(f"Uploading file: {filename}")
+            # Upload file to Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                file,
+                folder="certificates",
+                public_id=str(uuid.uuid4()),
+                resource_type="auto"
+            )
+            file_url = upload_result['secure_url']  # Cloudinary hosted URL
             
-            if filename.endswith('.pdf'):
-                # Enhanced PDF upload with proper content type
-                upload_result = cloudinary.uploader.upload(
-                    file,
-                    folder="certificates",
-                    public_id=f"cert_{student_id}_{uuid.uuid4()}",
-                    resource_type="raw",
-                    use_filename=True,
-                    unique_filename=False,
-                    overwrite=True,
-                    # Add these for better PDF handling
-                    context={
-                        "content_type": "application/pdf",
-                        "original_filename": file.filename
-                    },
-                    # Ensure proper file extension
-                    format="pdf"
-                )
-                
-                # Log the upload result for debugging
-                print(f"PDF upload successful:")
-                print(f"  URL: {upload_result['secure_url']}")
-                print(f"  Public ID: {upload_result['public_id']}")
-                print(f"  Format: {upload_result.get('format', 'unknown')}")
-                print(f"  Resource Type: {upload_result.get('resource_type', 'unknown')}")
-                
-            else:
-                # For images
-                upload_result = cloudinary.uploader.upload(
-                    file,
-                    folder="certificates",
-                    public_id=f"cert_{student_id}_{uuid.uuid4()}",
-                    resource_type="image"
-                )
-            
-            file_url = upload_result['secure_url']
-            
-            # Save to database
+            # Save to database with Cloudinary URL
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
@@ -304,30 +460,23 @@ def upload_certificate():
             conn.close()
             
             flash('Certificate uploaded successfully!', 'success')
-            
         except Exception as e:
             flash(f'Upload failed: {str(e)}', 'danger')
-            print(f"Upload error: {e}")
-            import traceback
-            traceback.print_exc()
     else:
-        flash('Invalid file type. Please upload PDF, JPG, or PNG files only.', 'danger')
+        flash('Invalid file type', 'danger')
     
     return redirect(url_for('student_dashboard'))
 
 @app.route('/add_student', methods=['GET', 'POST'])
+@teacher_required
 def add_student():
-    if 'user_id' not in session or session['user_type'] != 'teacher':
-        flash('Access denied', 'danger')
-        return redirect(url_for('login'))
-    
     if request.method == 'POST':
         student_email = request.form['student_email']
         teacher_id = session['user_id']
         
         try:
             conn = get_db_connection()
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             
             # Find student by email
             cursor.execute('SELECT user_id FROM users WHERE email = %s AND user_type = "student"', (student_email,))
@@ -363,16 +512,13 @@ def add_student():
     return render_template('add_student.html')
 
 @app.route('/view_student/<int:student_id>')
+@teacher_required
 def view_student(student_id):
-    if 'user_id' not in session or session['user_type'] != 'teacher':
-        flash('Access denied', 'danger')
-        return redirect(url_for('login'))
-    
     teacher_id = session['user_id']
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         
         # Verify teacher is linked to this student
         cursor.execute(
@@ -409,11 +555,8 @@ def view_student(student_id):
         return redirect(url_for('teacher_dashboard'))
 
 @app.route('/verify_certificate/<int:certificate_id>/<status>')
+@teacher_required
 def verify_certificate(certificate_id, status):
-    if 'user_id' not in session or session['user_type'] != 'teacher':
-        flash('Access denied', 'danger')
-        return redirect(url_for('login'))
-    
     if status not in ['verified', 'rejected']:
         flash('Invalid status', 'danger')
         return redirect(url_for('teacher_dashboard'))
@@ -437,18 +580,7 @@ def verify_certificate(certificate_id, status):
     referrer = request.referrer or url_for('teacher_dashboard')
     return redirect(referrer)
 
-# Health check endpoint for deployment
-"""
-@app.route('/health')
-def health_check():
-    return {'status': 'healthy'}, 200
-"""
-"""
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))
-    debug = os.getenv('FLASK_ENV') == 'development'
-    app.run(host='0.0.0.0', port=port, debug=debug)
-"""
+
 
 
 
