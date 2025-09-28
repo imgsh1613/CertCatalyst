@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Courses - Certification Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">Certification Tracker</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Teacher</div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li class="active"><a href="{{ url_for('teacher_courses') }}">My Courses</a></li>
+                <li><a href="{{ url_for('add_student') }}">Add Student</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>My Courses</h1>
+                <a href="{{ url_for('teacher_add_course') }}" class="btn btn-primary">Add New Course</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <div class="courses-grid">
+                {% for course in courses %}
+                <div class="course-card">
+                    <div class="course-header">
+                        <h3>{{ course.course_name }}</h3>
+                        <span class="course-year">{{ course.course_year }}</span>
+                    </div>
+                    <div class="course-content">
+                        <p class="course-description">{{ course.course_description }}</p>
+                        <p class="certificate-template">
+                            <strong>Certificate Template:</strong> {{ course.certificate_template }}
+                        </p>
+                        <p class="course-meta">
+                            Created: {{ course.created_at.strftime('%Y-%m-%d') if course.created_at else 'N/A' }}
+                        </p>
+                    </div>
+                    <div class="course-actions">
+                        <a href="{{ url_for('teacher_edit_course', course_id=course.course_id) }}" 
+                           class="btn btn-sm btn-secondary">Edit</a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="no-courses">
+                    <h3>No courses created yet</h3>
+                    <p>Create your first course to start managing certificates.</p>
+                    <a href="{{ url_for('teacher_add_course') }}" class="btn btn-primary">Create Course</a>
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>
