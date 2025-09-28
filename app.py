@@ -148,7 +148,7 @@ def logout():
 def admin_dashboard():
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Get statistics
         cursor.execute('SELECT COUNT(*) as count FROM users WHERE user_type = "teacher"')
@@ -225,7 +225,7 @@ def admin_create_user():
 def admin_courses():
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute('''
             SELECT c.*, u.full_name as created_by_name 
             FROM courses c 
@@ -248,7 +248,7 @@ def teacher_dashboard():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Get total number of students
         cursor.execute(
@@ -299,7 +299,7 @@ def teacher_courses():
     teacher_id = session['user_id']
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute('SELECT * FROM courses WHERE created_by = %s ORDER BY created_at DESC', (teacher_id,))
         courses = cursor.fetchall()
         cursor.close()
@@ -344,7 +344,7 @@ def teacher_edit_course(course_id):
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Verify teacher owns this course
         cursor.execute('SELECT * FROM courses WHERE course_id = %s AND created_by = %s', (course_id, teacher_id))
@@ -390,7 +390,7 @@ def student_dashboard():
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Get student's certificates
         cursor.execute('''
@@ -476,7 +476,7 @@ def add_student():
         
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
             
             # Find student by email
             cursor.execute('SELECT user_id FROM users WHERE email = %s AND user_type = "student"', (student_email,))
@@ -518,7 +518,7 @@ def view_student(student_id):
     
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         
         # Verify teacher is linked to this student
         cursor.execute(
@@ -579,6 +579,7 @@ def verify_certificate(certificate_id, status):
     # Get the referer URL to redirect back to the same page
     referrer = request.referrer or url_for('teacher_dashboard')
     return redirect(referrer)
+
 
 
 
