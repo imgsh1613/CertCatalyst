@@ -4,7 +4,6 @@ from datetime import datetime
 from flask import Flask, request, render_template, redirect, url_for, flash, session, jsonify
 import mysql.connector
 from werkzeug.security import generate_password_hash, check_password_hash
-# from werkzeug.utils import secure_filename
 import cloudinary
 import cloudinary.uploader
 import ssl
@@ -61,7 +60,6 @@ def teacher_required(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
-# Routes
 @app.route('/')
 def index():
     if 'user_id' in session:
@@ -141,7 +139,6 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
-# Admin Routes
 @app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
@@ -161,8 +158,7 @@ def admin_dashboard():
         
         cursor.execute('SELECT COUNT(*) as count FROM certificates')
         total_certificates = cursor.fetchone()['count']
-        
-        # Get recent users
+
         cursor.execute('''
             SELECT user_id, username, full_name, email, user_type, created_at 
             FROM users 
@@ -239,7 +235,6 @@ def admin_courses():
         flash(f'Database error: {str(e)}', 'danger')
         return render_template('admin_courses.html', courses=[])
 
-# Teacher Routes
 @app.route('/teacher/dashboard')
 @teacher_required
 def teacher_dashboard():
@@ -249,14 +244,12 @@ def teacher_dashboard():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get total number of students
         cursor.execute(
             'SELECT COUNT(DISTINCT student_id) as total_students FROM teacher_student WHERE teacher_id = %s',
             (teacher_id,)
         )
         total_students = cursor.fetchone()['total_students']
         
-        # Get certificates by course
         cursor.execute('''
             SELECT c.course_name, COUNT(cert.certificate_id) as total_certificates
             FROM certificates cert
@@ -267,7 +260,6 @@ def teacher_dashboard():
         ''', (teacher_id,))
         certificates_by_course = cursor.fetchall()
         
-        # Get certificates by student
         cursor.execute('''
             SELECT u.user_id, u.full_name, COUNT(cert.certificate_id) as certificate_count
             FROM certificates cert
@@ -344,8 +336,7 @@ def teacher_edit_course(course_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Verify teacher owns this course
+
         cursor.execute('SELECT * FROM courses WHERE course_id = %s AND created_by = %s', (course_id, teacher_id))
         course = cursor.fetchone()
         
@@ -390,8 +381,7 @@ def student_dashboard():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Get student's certificates
+
         cursor.execute('''
             SELECT cert.certificate_id, c.course_name, cert.certificate_name, 
                    cert.issue_date, cert.certificate_file, cert.verification_status
@@ -402,7 +392,6 @@ def student_dashboard():
         ''', (student_id,))
         certificates = cursor.fetchall()
         
-        # Get courses for upload dropdown
         cursor.execute('SELECT course_id, course_name FROM courses ORDER BY course_name')
         courses = cursor.fetchall()
         
@@ -423,8 +412,7 @@ def upload_certificate():
     course_id = request.form['course_id']
     certificate_name = request.form['certificate_name']
     issue_date = request.form['issue_date']
-    
-    # Handle file upload
+
     if 'certificate_file' not in request.files:
         flash('No file part', 'danger')
         return redirect(url_for('student_dashboard'))
@@ -436,16 +424,14 @@ def upload_certificate():
     
     if file and allowed_file(file.filename):
         try:
-            # Upload file to Cloudinary
             upload_result = cloudinary.uploader.upload(
                 file,
                 folder="certificates",
                 public_id=str(uuid.uuid4()),
                 resource_type="auto"
             )
-            file_url = upload_result['secure_url']  # Cloudinary hosted URL
+            file_url = upload_result['secure_url'] 
             
-            # Save to database with Cloudinary URL
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
@@ -477,13 +463,11 @@ def add_student():
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # Find student by email
             cursor.execute('SELECT user_id FROM users WHERE email = %s AND user_type = "student"', (student_email,))
             student = cursor.fetchone()
             
             if student:
                 student_id = student['user_id']
-                # Check if already linked
                 cursor.execute(
                     'SELECT * FROM teacher_student WHERE teacher_id = %s AND student_id = %s',
                     (teacher_id, student_id)
@@ -491,7 +475,6 @@ def add_student():
                 if cursor.fetchone():
                     flash('Student already linked to your profile', 'warning')
                 else:
-                    # Create link
                     cursor.execute(
                         'INSERT INTO teacher_student (teacher_id, student_id) VALUES (%s, %s)',
                         (teacher_id, student_id)
@@ -518,8 +501,7 @@ def view_student(student_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Verify teacher is linked to this student
+
         cursor.execute(
             'SELECT * FROM teacher_student WHERE teacher_id = %s AND student_id = %s',
             (teacher_id, student_id)
@@ -529,12 +511,10 @@ def view_student(student_id):
             conn.close()
             flash('Access denied: Student not linked to your profile', 'danger')
             return redirect(url_for('teacher_dashboard'))
-        
-        # Get student info
+
         cursor.execute('SELECT full_name, email FROM users WHERE user_id = %s', (student_id,))
         student = cursor.fetchone()
-        
-        # Get student certificates
+
         cursor.execute('''
             SELECT cert.certificate_id, c.course_name, cert.certificate_name, 
                    cert.issue_date, cert.certificate_file, cert.verification_status
@@ -574,10 +554,10 @@ def verify_certificate(certificate_id, status):
         flash(f'Certificate {status} successfully', 'success')
     except Exception as e:
         flash(f'Error updating certificate: {str(e)}', 'danger')
-    
-    # Get the referer URL to redirect back to the same page
+
     referrer = request.referrer or url_for('teacher_dashboard')
     return redirect(referrer)
+
 
 
 
