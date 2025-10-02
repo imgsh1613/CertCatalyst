@@ -33,7 +33,6 @@ def get_db_connection():
         password=os.getenv('DB_PASSWORD'),
         database=os.getenv('DB_NAME'),
         cursorclass=pymysql.cursors.DictCursor,
-        # ✅ SSL configuration for PyMySQL:
         ssl={
             'ca': 'isrgrootx1.pem'
         }
@@ -579,6 +578,7 @@ def verify_certificate(certificate_id, status):
     # Get the referer URL to redirect back to the same page
     referrer = request.referrer or url_for('teacher_dashboard')
     return redirect(referrer)
+
 
 
 
