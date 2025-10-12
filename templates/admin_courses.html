@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Courses - Admin Panel</title>
+    <title>Manage Courses</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -17,7 +17,9 @@
             <ul class="nav-links">
                 <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
                 <li><a href="{{ url_for('admin_create_user') }}">Create User</a></li>
+                <li><a href="{{ url_for('admin_users') }}">Manage Users</a></li>
                 <li class="active"><a href="{{ url_for('admin_courses') }}">Manage Courses</a></li>
+                <li><a href="{{ url_for('admin_teacher_students') }}">Teacher-Student Links</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             </ul>
         </nav>
@@ -35,39 +37,85 @@
                 {% endwith %}
             </header>
             
-            <div class="courses-list">
-                <h3>All Courses</h3>
+            <div class="section-card">
+                <h3>All Courses ({{ courses|length }})</h3>
                 <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
+                                <th>ID</th>
                                 <th>Course Name</th>
                                 <th>Description</th>
                                 <th>Certificate Template</th>
                                 <th>Year</th>
                                 <th>Created By</th>
+                                <th>Enrolled Students</th>
                                 <th>Created Date</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for course in courses %}
                             <tr>
+                                <td>{{ course.course_id }}</td>
                                 <td><strong>{{ course.course_name }}</strong></td>
                                 <td>{{ course.course_description or 'No description' }}</td>
                                 <td>{{ course.certificate_template }}</td>
-                                <td>{{ course.course_year }}</td>
+                                <td><span class="badge badge-primary">{{ course.course_year }}</span></td>
                                 <td>{{ course.created_by_name or 'Unknown' }}</td>
+                                <td>
+                                    <span class="badge badge-success">{{ course.enrolled_students or 0 }}</span>
+                                </td>
                                 <td>{{ course.created_at.strftime('%Y-%m-%d') if course.created_at else 'N/A' }}</td>
+                                <td>
+                                    <a href="{{ url_for('admin_edit_course', course_id=course.course_id) }}" 
+                                       class="btn btn-sm btn-secondary">Edit</a>
+                                    <form method="POST" 
+                                          action="{{ url_for('admin_delete_course', course_id=course.course_id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Are you sure you want to delete {{ course.course_name }}? {% if course.enrolled_students > 0 %}This course has {{ course.enrolled_students }} enrolled student(s).{% endif %}');">
+                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6">No courses created yet</td>
+                                <td colspan="9">No courses created yet</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
+            
+            <!-- Course Statistics -->
+            {% if courses %}
+            <div class="section-card">
+                <h3>Course Statistics</h3>
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <h4>Total Courses</h4>
+                        <div class="stat-value">{{ courses|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Total Enrollments</h4>
+                        <div class="stat-value">{{ courses|sum(attribute='enrolled_students') }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Courses with Enrollments</h4>
+                        <div class="stat-value">
+                            {{ courses|selectattr('enrolled_students', 'greaterthan', 0)|list|length }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Empty Courses</h4>
+                        <div class="stat-value">
+                            {{ courses|rejectattr('enrolled_students')|list|length + courses|selectattr('enrolled_students', 'equalto', 0)|list|length }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </main>
     </div>
 </body>
