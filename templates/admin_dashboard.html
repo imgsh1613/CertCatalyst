@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Certification Tracker</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
@@ -18,7 +18,9 @@
             <ul class="nav-links">
                 <li class="active"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
                 <li><a href="{{ url_for('admin_create_user') }}">Create User</a></li>
+                <li><a href="{{ url_for('admin_users') }}">Manage Users</a></li>
                 <li><a href="{{ url_for('admin_courses') }}">Manage Courses</a></li>
+                <li><a href="{{ url_for('admin_teacher_students') }}">Teacher-Student Links</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             </ul>
         </nav>
@@ -39,14 +41,17 @@
                 <div class="stat-card">
                     <h3>Total Teachers</h3>
                     <div class="stat-value">{{ total_teachers }}</div>
+                    <a href="{{ url_for('admin_users') }}?type=teacher" class="stat-link">View Teachers →</a>
                 </div>
                 <div class="stat-card">
                     <h3>Total Students</h3>
                     <div class="stat-value">{{ total_students }}</div>
+                    <a href="{{ url_for('admin_users') }}?type=student" class="stat-link">View Students →</a>
                 </div>
                 <div class="stat-card">
                     <h3>Total Courses</h3>
                     <div class="stat-value">{{ total_courses }}</div>
+                    <a href="{{ url_for('admin_courses') }}" class="stat-link">Manage Courses →</a>
                 </div>
                 <div class="stat-card">
                     <h3>Total Certificates</h3>
@@ -64,7 +69,10 @@
                                 <th>Username</th>
                                 <th>Email</th>
                                 <th>Type</th>
+                                <th>Year</th>
+                                <th>Section</th>
                                 <th>Registered</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -78,25 +86,24 @@
                                         {{ user.user_type.title() }}
                                     </span>
                                 </td>
+                                <td>{{ user.academic_year or '-' }}</td>
+                                <td>{{ user.section or '-' }}</td>
                                 <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
+                                <td>
+                                    <a href="{{ url_for('admin_edit_user', user_id=user.user_id) }}" 
+                                       class="btn btn-sm btn-secondary">Edit</a>
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="5">No recent users</td>
+                                <td colspan="8">No recent users</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-            
-            <div class="quick-actions">
-                <h3>Quick Actions</h3>
-                <div class="action-buttons">
-                    <a href="{{ url_for('admin_create_user') }}" class="btn btn-primary">Create New User</a>
-                    <a href="{{ url_for('admin_courses') }}" class="btn btn-secondary">Manage Courses</a>
-                </div>
-            </div>
+
         </main>
     </div>
 </body>
