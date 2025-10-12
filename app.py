@@ -1009,3 +1009,4 @@ def verify_certificate(certificate_id, status):
 
     referrer = request.referrer or url_for('teacher_dashboard')
     return redirect(referrer)
+
