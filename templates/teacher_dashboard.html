@@ -1,17 +1,16 @@
-<!-- templates/teacher_dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard - Certification Tracker</title>
+    <title>Teacher Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
         <nav class="sidebar">
-            <div class="logo">Certification Tracker</div>
+            <div class="logo">VerifiCert</div>
             <div class="user-info">
                 <div class="user-name">{{ session.full_name }}</div>
                 <div class="user-role">Teacher</div>
@@ -27,7 +26,6 @@
         <main class="main-content">
             <header>
                 <h1>Teacher Dashboard</h1>
-                <br></br>
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
@@ -37,26 +35,108 @@
                 {% endwith %}
             </header>
             
+            <!-- Statistics Cards -->
             <div class="dashboard-stats">
                 <div class="stat-card">
                     <h3>Total Students</h3>
                     <div class="stat-value">{{ total_students }}</div>
                 </div>
-                {% for course in certificates_by_course %}
                 <div class="stat-card">
-                    <h3>{{ course.course_name }}</h3>
-                    <div class="stat-value">{{ course.total_certificates }}</div>
-                    <div class="stat-label">Certificates</div>
+                    <h3>Total Courses</h3>
+                    <div class="stat-value">{{ course_stats|length }}</div>
                 </div>
-                {% endfor %}
+                <div class="stat-card">
+                    <h3>Active Assignments</h3>
+                    <div class="stat-value">{{ course_stats|sum(attribute='pending') }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Completed</h3>
+                    <div class="stat-value">{{ course_stats|sum(attribute='completed') }}</div>
+                </div>
             </div>
-            
+
+            <!-- Course Statistics -->
+            <div class="section-card">
+                <h3>Course Statistics - Completion Overview</h3>
+                <div class="course-stats-grid">
+                    {% for course in course_stats %}
+                    <div class="course-stat-card">
+                        <h4>{{ course.course_name }}</h4>
+                        <p class="course-year">Year: {{ course.course_year }}</p>
+                        
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                {% if course.total_assigned > 0 %}
+                                    {% set completion_percentage = (course.completed / course.total_assigned * 100)|round|int %}
+                                    <div class="progress-fill" style="width: {{ completion_percentage }}%"></div>
+                                {% else %}
+                                    <div class="progress-fill" style="width: 0%"></div>
+                                {% endif %}
+                            </div>
+                            <div class="progress-stats">
+                                <span class="completed-stat">✓ Completed: {{ course.completed }}</span>
+                                <span class="pending-stat">⏳ Pending: {{ course.pending }}</span>
+                                <span class="total-stat">Total: {{ course.total_assigned }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="course-metrics">
+                            <div class="metric">
+                                <span class="metric-value">{{ course.verified_certs }}</span>
+                                <span class="metric-label">Verified Certificates</span>
+                            </div>
+                            {% if course.total_assigned > 0 %}
+                            <div class="metric">
+                                <span class="metric-value">{{ ((course.completed / course.total_assigned) * 100)|round(1) }}%</span>
+                                <span class="metric-label">Completion Rate</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="no-data">No courses created yet. <a href="{{ url_for('teacher_add_course') }}">Create a course</a></p>
+                    {% endfor %}
+                </div>
+            </div>
+            <br>
+            <!-- Completion Chart -->
+            {% if course_stats %}
             <div class="dashboard-charts">
                 <div class="chart-container">
+                    <h3>Overall Completion Status</h3>
+                    <canvas id="completionChart"></canvas>
+                </div>
+                <div class="chart-container">
                     <h3>Certificates by Course</h3>
-                    <canvas id="certificatesByCourse"></canvas>
+                    <canvas id="certificateChart"></canvas>
                 </div>
             </div>
+            {% endif %}
+
+            <!-- Filter Students -->
+            <div class="section-card">
+                <h3>Filter Students by Year & Section</h3>
+                <div class="filter-container">
+                    <select id="yearFilter" class="filter-select">
+                        <option value="">All Years</option>
+                        {% for ys in year_sections %}
+                            {% if ys.academic_year %}
+                                <option value="{{ ys.academic_year }}">{{ ys.academic_year }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <select id="sectionFilter" class="filter-select">
+                        <option value="">All Sections</option>
+                        {% for ys in year_sections %}
+                            {% if ys.section %}
+                                <option value="{{ ys.section }}">Section {{ ys.section }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button id="clearFilters" class="btn btn-secondary">Clear Filters</button>
+                </div>
+            </div>
+            <br>
             <!-- Search Section -->
             <div class="search-section">
                 <h3>Search Students</h3>
@@ -73,172 +153,172 @@
                 <div id="searchResults" class="search-results-info"></div>
             </div>
             
+            <!-- Students List -->
             <div class="students-list">
                 <h3>
                     Students 
-                    <span id="studentCount" class="student-count">({{ certificates_by_student|length }})</span>
+                    <span id="studentCount" class="student-count">({{ students|length }})</span>
                 </h3>
                 <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
                                 <th>Student Name</th>
+                                <th>Year</th>
+                                <th>Section</th>
+                                <th>Total Courses</th>
+                                <th>Completed</th>
+                                <th>Pending</th>
                                 <th>Certificates</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="studentsTableBody">
-                            {% for student in certificates_by_student %}
-                            <tr class="student-row" data-student-name="{{ student.full_name.lower() }}">
+                            {% for student in students %}
+                            <tr class="student-row" 
+                                data-student-name="{{ student.full_name.lower() }}"
+                                data-year="{{ student.academic_year or '' }}"
+                                data-section="{{ student.section or '' }}">
                                 <td class="student-name">{{ student.full_name }}</td>
-                                <td>{{ student.certificate_count }}</td>
+                                <td>{{ student.academic_year or 'N/A' }}</td>
+                                <td>{{ student.section or 'N/A' }}</td>
+                                <td>{{ student.total_courses or 0 }}</td>
+                                <td><span class="badge badge-verified">{{ student.completed_courses or 0 }}</span></td>
+                                <td><span class="badge badge-pending">{{ (student.total_courses or 0) - (student.completed_courses or 0) }}</span></td>
+                                <td><span class="badge badge-success">{{ student.verified_certs or 0 }}</span></td>
                                 <td>
-                                    <a href="{{ url_for('view_student', student_id=student.user_id) }}" class="btn btn-sm">View Details</a>
+                                    <a href="{{ url_for('view_student', student_id=student.user_id) }}" class="btn btn-sm">View</a>
+                                    <a href="{{ url_for('assign_course', student_id=student.user_id) }}" class="btn btn-sm btn-secondary">Assign</a>
                                 </td>
                             </tr>
                             {% else %}
                             <tr id="noStudentsRow">
-                                <td colspan="3">No students added yet</td>
+                                <td colspan="8">No students added yet</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                     <div id="noSearchResults" class="no-results" style="display: none;">
-                        No students found matching your search.
+                        No students found matching your criteria.
                     </div>
                 </div>
             </div>
         </main>
     </div>
-            
     
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     <script>
-        // Check if we have course data before creating the chart
-        {% if certificates_by_course %}
-        // Prepare data safely
-        const courseLabels = [
-            {% for course in certificates_by_course %}
-                '{{ course.course_name|safe }}'{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ];
+        // Charts
+        {% if course_stats %}
+        const courseLabels = [{% for course in course_stats %}'{{ course.course_name|safe }}'{% if not loop.last %},{% endif %}{% endfor %}];
+        const completedData = [{% for course in course_stats %}{{ course.completed }}{% if not loop.last %},{% endif %}{% endfor %}];
+        const pendingData = [{% for course in course_stats %}{{ course.pending }}{% if not loop.last %},{% endif %}{% endfor %}];
+        const certData = [{% for course in course_stats %}{{ course.verified_certs }}{% if not loop.last %},{% endif %}{% endfor %}];
         
-        const courseData = [
-            {% for course in certificates_by_course %}
-                {{ course.total_certificates }}{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ];
-        
-        // Chart for certificates by course
-        const courseCtx = document.getElementById('certificatesByCourse').getContext('2d');
-        new Chart(courseCtx, {
-            type: 'pie',
+        // Completion Chart
+        new Chart(document.getElementById('completionChart'), {
+            type: 'bar',
             data: {
                 labels: courseLabels,
                 datasets: [{
-                    data: courseData,
-                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'],
+                    label: 'Completed',
+                    data: completedData,
+                    backgroundColor: '#1cc88a'
+                }, {
+                    label: 'Pending',
+                    data: pendingData,
+                    backgroundColor: '#f6c23e'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    tooltip: {
-                        enabled: true
-                    },
-                    legend: {
-                        position: 'bottom'
-                    }
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
                 }
             }
         });
-        {% else %}
-        // No data available - show message or empty chart
-        document.getElementById('certificatesByCourse').parentElement.innerHTML = '<p>No certificate data available yet.</p>';
+        
+        // Certificate Chart
+        new Chart(document.getElementById('certificateChart'), {
+            type: 'doughnut',
+            data: {
+                labels: courseLabels,
+                datasets: [{
+                    data: certData,
+                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
         {% endif %}
-
-        // Student search functionality
+        
+        // Search and Filter functionality
         const searchInput = document.getElementById('studentSearch');
-        const clearButton = document.getElementById('clearSearch');
-        const searchResults = document.getElementById('searchResults');
+        const yearFilter = document.getElementById('yearFilter');
+        const sectionFilter = document.getElementById('sectionFilter');
+        const clearFilters = document.getElementById('clearFilters');
+        const clearSearch = document.getElementById('clearSearch');
         const studentRows = document.querySelectorAll('.student-row');
         const studentCount = document.getElementById('studentCount');
         const noSearchResults = document.getElementById('noSearchResults');
         const studentsTable = document.querySelector('.table-responsive table');
-        const totalStudents = {{ certificates_by_student|length }};
+        const totalStudents = {{ students|length }};
         
-        function highlightText(text, searchTerm) {
-            if (!searchTerm) return text;
-            const regex = new RegExp(`(${searchTerm})`, 'gi');
-            return text.replace(regex, '<span class="highlight">$1</span>');
-        }
-        
-        function performSearch() {
+        function filterStudents() {
             const searchTerm = searchInput.value.trim().toLowerCase();
+            const selectedYear = yearFilter.value;
+            const selectedSection = sectionFilter.value;
             let visibleCount = 0;
             
-            if (searchTerm === '') {
-                // Show all students
-                studentRows.forEach(row => {
+            studentRows.forEach(row => {
+                const name = row.dataset.studentName;
+                const year = row.dataset.year;
+                const section = row.dataset.section;
+                
+                const matchesSearch = !searchTerm || name.includes(searchTerm);
+                const matchesYear = !selectedYear || year === selectedYear;
+                const matchesSection = !selectedSection || section === selectedSection;
+                
+                if (matchesSearch && matchesYear && matchesSection) {
                     row.style.display = '';
-                    const nameCell = row.querySelector('.student-name');
-                    const originalName = nameCell.textContent;
-                    nameCell.innerHTML = originalName;
-                });
-                visibleCount = totalStudents;
-                searchResults.textContent = '';
-                noSearchResults.style.display = 'none';
-                studentsTable.style.display = '';
-            } else {
-                // Filter students
-                studentRows.forEach(row => {
-                    const studentName = row.dataset.studentName;
-                    const nameCell = row.querySelector('.student-name');
-                    const originalName = nameCell.textContent;
-                    
-                    if (studentName.includes(searchTerm)) {
-                        row.style.display = '';
-                        nameCell.innerHTML = highlightText(originalName, searchInput.value.trim());
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                        nameCell.innerHTML = originalName;
-                    }
-                });
-                
-                if (visibleCount === 0) {
-                    noSearchResults.style.display = 'block';
-                    studentsTable.style.display = 'none';
+                    visibleCount++;
                 } else {
-                    noSearchResults.style.display = 'none';
-                    studentsTable.style.display = '';
+                    row.style.display = 'none';
                 }
-                
-                searchResults.textContent = `Showing ${visibleCount} of ${totalStudents} students`;
-            }
+            });
             
             studentCount.textContent = `(${visibleCount})`;
+            
+            if (visibleCount === 0) {
+                noSearchResults.style.display = 'block';
+                studentsTable.style.display = 'none';
+            } else {
+                noSearchResults.style.display = 'none';
+                studentsTable.style.display = '';
+            }
         }
         
-        // Event listeners
-        searchInput.addEventListener('input', performSearch);
+        searchInput.addEventListener('input', filterStudents);
+        yearFilter.addEventListener('change', filterStudents);
+        sectionFilter.addEventListener('change', filterStudents);
         
-        clearButton.addEventListener('click', () => {
-            searchInput.value = '';
-            performSearch();
-            searchInput.focus();
+        clearFilters.addEventListener('click', () => {
+            yearFilter.value = '';
+            sectionFilter.value = '';
+            filterStudents();
         });
         
-        // Focus search on Ctrl+F or Cmd+F
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-                e.preventDefault();
-                searchInput.focus();
-                searchInput.select();
-            }
+        clearSearch.addEventListener('click', () => {
+            searchInput.value = '';
+            filterStudents();
         });
     </script>
 </body>
 </html>
+
+
 
