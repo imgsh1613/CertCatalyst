@@ -1,16 +1,15 @@
-<!-- templates/view_student.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Details - Certification Tracker</title>
+    <title>Student Details</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="dashboard-container">
         <nav class="sidebar">
-            <div class="logo">Certification Tracker</div>
+            <div class="logo">VerifiCert</div>
             <div class="user-info">
                 <div class="user-name">{{ session.full_name }}</div>
                 <div class="user-role">Teacher</div>
@@ -25,7 +24,10 @@
         <main class="main-content">
             <header>
                 <h1>Student Details</h1>
-                <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-back">Back to Dashboard</a>
+                <div>
+                    <a href="{{ url_for('assign_course', student_id=student_id) }}" class="btn btn-primary">Assign Courses</a>
+                    <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-back">Back to Dashboard</a>
+                </div>
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
@@ -37,55 +39,113 @@
             
             <div class="student-info">
                 <h2>{{ student.full_name }}</h2>
-                <p>Email: {{ student.email }}</p>
+                <div class="student-details-grid">
+                    <p><strong>Email:</strong> {{ student.email }}</p>
+                    {% if student.academic_year %}
+                    <p><strong>Year:</strong> {{ student.academic_year }}</p>
+                    {% endif %}
+                    {% if student.section %}
+                    <p><strong>Section:</strong> {{ student.section }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Course Assignments Overview -->
+            <div class="section-card">
+                <h3>Course Progress Overview</h3>
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <h4>Total Assigned</h4>
+                        <div class="stat-value">{{ assignments|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Completed</h4>
+                        <div class="stat-value">
+                            {{ assignments|selectattr('status', 'equalto', 'completed')|list|length }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Pending</h4>
+                        <div class="stat-value">
+                            {{ assignments|selectattr('status', 'equalto', 'active')|list|length }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Verified</h4>
+                        <div class="stat-value">
+                            {{ assignments|selectattr('verification_status', 'equalto', 'verified')|list|length }}
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="certificates-list">
-                <h3>Student Certificates</h3>
+                <h3>Assigned Courses & Certificates</h3>
                 <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
-                                <th>Course</th>
+                                <th>Course Name</th>
+                                <th>Status</th>
+                                <th>Assigned Date</th>
                                 <th>Certificate Name</th>
                                 <th>Issue Date</th>
-                                <th>Status</th>
+                                <th>Verification</th>
                                 <th>Certificate</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for cert in certificates %}
+                            {% for assignment in assignments %}
                             <tr>
-                                <td>{{ cert.course_name }}</td>
-                                <td>{{ cert.certificate_name }}</td>
-                                <td>{{ cert.issue_date }}</td>
+                                <td><strong>{{ assignment.course_name }}</strong></td>
                                 <td>
-                                    <span class="badge badge-{{ cert.verification_status }}">
-                                        {{ cert.verification_status }}
+                                    <span class="badge badge-{{ assignment.status }}">
+                                        {{ assignment.status|title }}
                                     </span>
                                 </td>
+                                <td>{{ assignment.assigned_date.strftime('%b %d, %Y') if assignment.assigned_date else 'N/A' }}</td>
+                                <td>{{ assignment.certificate_name or 'Not uploaded' }}</td>
+                                <td>{{ assignment.issue_date if assignment.issue_date else '-' }}</td>
                                 <td>
-                                    <button onclick="openPDF('{{ cert.certificate_file }}', '{{ cert.certificate_name }}')" class="btn btn-sm">View</button>
+                                    {% if assignment.verification_status %}
+                                    <span class="badge badge-{{ assignment.verification_status }}">
+                                        {{ assignment.verification_status|title }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
                                 </td>
                                 <td>
-                                    {% if cert.verification_status == 'pending' %}
-                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='verified') }}" 
-                                       class="btn btn-sm btn-success">Verify</a>
-                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='rejected') }}" 
-                                       class="btn btn-sm btn-danger">Reject</a>
-                                    {% elif cert.verification_status == 'rejected' %}
-                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='verified') }}" 
-                                       class="btn btn-sm btn-success">Verify</a>
-                                    {% elif cert.verification_status == 'verified' %}
-                                    <a href="{{ url_for('verify_certificate', certificate_id=cert.certificate_id, status='rejected') }}" 
-                                       class="btn btn-sm btn-danger">Reject</a>
+                                    {% if assignment.certificate_file %}
+                                    <button onclick="openPDF('{{ assignment.certificate_file }}', '{{ assignment.certificate_name }}')" 
+                                            class="btn btn-sm">View</button>
+                                    {% else %}
+                                    <span class="text-muted">No file</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if assignment.certificate_id %}
+                                        {% if assignment.verification_status == 'pending' %}
+                                        <a href="{{ url_for('verify_certificate', certificate_id=assignment.certificate_id, status='verified') }}" 
+                                           class="btn btn-sm btn-success" onclick="return confirm('Verify this certificate?')">Verify</a>
+                                        <a href="{{ url_for('verify_certificate', certificate_id=assignment.certificate_id, status='rejected') }}" 
+                                           class="btn btn-sm btn-danger" onclick="return confirm('Reject this certificate?')">Reject</a>
+                                        {% elif assignment.verification_status == 'rejected' %}
+                                        <a href="{{ url_for('verify_certificate', certificate_id=assignment.certificate_id, status='verified') }}" 
+                                           class="btn btn-sm btn-success">Verify</a>
+                                        {% elif assignment.verification_status == 'verified' %}
+                                        <a href="{{ url_for('verify_certificate', certificate_id=assignment.certificate_id, status='rejected') }}" 
+                                           class="btn btn-sm btn-danger">Reject</a>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">Waiting for upload</span>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6">No certificates uploaded yet</td>
+                                <td colspan="8">No courses assigned yet. <a href="{{ url_for('assign_course', student_id=student_id) }}">Assign courses</a></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -95,86 +155,67 @@
         </main>
     </div>
     
-<script>
-function openPDF(url, filename) {
-    console.log('openPDF called with:', url, filename);
-    
-    if (!url || url.trim() === '') {
-        alert('No certificate URL found!');
-        return;
-    }
-    
-    const newWindow = window.open('', '_blank');
-    if (!newWindow) {
-        alert('Popup blocked! Opening in same tab...');
-        window.location.href = url;
-        return;
-    }
-    
-    newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>${filename || 'Certificate'}</title>
-            <style>
-                body { margin: 0; padding: 0; background: #f0f0f0; font-family: Arial, sans-serif; }
-                .container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
-                .toolbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-                .toolbar button { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
-                .toolbar button:hover { background: #666; }
-                .pdf-container { flex: 1; overflow: hidden; }
-                iframe { width: 100%; height: 100%; border: none; }
-                .fallback { padding: 20px; text-align: center; }
-                .fallback a { color: #4e73df; text-decoration: none; padding: 10px 20px; background: #f8f9fc; border-radius: 4px; display: inline-block; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="toolbar">
-                    <span>Certificate Viewer - ${filename || 'Certificate'}</span>
-                    <div>
-                        <button onclick="window.open('${url}', '_blank')">Open Original</button>
-                        <button onclick="downloadPDF('${url}', '${filename || 'certificate.pdf'}')">Download</button>
-                        <button onclick="window.close()">Close</button>
-                    </div>
-                </div>
-                <div class="pdf-container">
-                    <iframe src="${url}" onload="console.log('PDF loaded')" onerror="showFallback()"></iframe>
-                    <div id="fallback" class="fallback" style="display: none;">
-                        <h3>Unable to display PDF</h3>
-                        <p>Your browser may not support PDF viewing.</p>
-                        <a href="${url}" target="_blank">Click here to download the certificate</a>
-                    </div>
-                </div>
-            </div>
+    <script>
+        function openPDF(url, filename) {
+            if (!url || url.trim() === '') {
+                alert('No certificate URL found!');
+                return;
+            }
             
-            <script>
-                function downloadPDF(url, filename) {
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                }
-                
-                function showFallback() {
-                    document.getElementById('fallback').style.display = 'block';
-                    document.querySelector('iframe').style.display = 'none';
-                }
-            <\/script>
-        </body>
-        </html>
-    `);
-}
-
-// Test if function is loaded
-console.log('openPDF function loaded:', typeof openPDF === 'function');
-</script>
-    
+            const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                alert('Popup blocked! Opening in same tab...');
+                window.location.href = url;
+                return;
+            }
+            
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${filename || 'Certificate'}</title>
+                    <style>
+                        body { margin: 0; padding: 0; background: #f0f0f0; font-family: Arial, sans-serif; }
+                        .container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
+                        .toolbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+                        .toolbar button { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
+                        .toolbar button:hover { background: #666; }
+                        .pdf-container { flex: 1; overflow: hidden; }
+                        iframe { width: 100%; height: 100%; border: none; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="toolbar">
+                            <span>Certificate Viewer - ${filename || 'Certificate'}</span>
+                            <div>
+                                <button onclick="window.open('${url}', '_blank')">Open Original</button>
+                                <button onclick="downloadPDF('${url}', '${filename || 'certificate.pdf'}')">Download</button>
+                                <button onclick="window.close()">Close</button>
+                            </div>
+                        </div>
+                        <div class="pdf-container">
+                            <iframe src="${url}"></iframe>
+                        </div>
+                    </div>
+                    <script>
+                        function downloadPDF(url, filename) {
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+        }
+    </script>
 </body>
-
 </html>
+
 
 
 
