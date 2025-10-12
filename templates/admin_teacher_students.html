@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher-Student Relationships - Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">Admin Panel</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('admin_create_user') }}">Create User</a></li>
+                <li><a href="{{ url_for('admin_users') }}">Manage Users</a></li>
+                <li><a href="{{ url_for('admin_courses') }}">Manage Courses</a></li>
+                <li class="active"><a href="{{ url_for('admin_teacher_students') }}">Teacher-Student Links</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Teacher-Student Relationships</h1>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-back">Back to Dashboard</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <!-- Search functionality -->
+            <div class="section-card">
+                <h3>Search Relationships</h3>
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        id="relationshipSearch" 
+                        class="search-input" 
+                        placeholder="Search by teacher or student name..."
+                        autocomplete="off"
+                    >
+                    <button id="clearSearch" class="clear-search">Clear</button>
+                </div>
+                <div id="searchResults" class="search-results-info"></div>
+            </div>
+            
+            <div class="section-card">
+                <h3>All Relationships (<span id="relationshipCount">{{ relationships|length }}</span>)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Teacher Name</th>
+                                <th>Teacher Email</th>
+                                <th>Student Name</th>
+                                <th>Student Email</th>
+                                <th>Year</th>
+                                <th>Section</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="relationshipsTableBody">
+                            {% for rel in relationships %}
+                            <tr class="relationship-row" 
+                                data-teacher-name="{{ rel.teacher_name.lower() }}"
+                                data-student-name="{{ rel.student_name.lower() }}">
+                                <td><strong>{{ rel.teacher_name }}</strong></td>
+                                <td>{{ rel.teacher_email }}</td>
+                                <td><strong>{{ rel.student_name }}</strong></td>
+                                <td>{{ rel.student_email }}</td>
+                                <td>{{ rel.academic_year or '-' }}</td>
+                                <td>{{ rel.section or '-' }}</td>
+                                <td>
+                                    <form method="POST" 
+                                          action="{{ url_for('admin_remove_teacher_student', teacher_id=rel.teacher_id, student_id=rel.student_id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Are you sure you want to remove the relationship between {{ rel.teacher_name }} and {{ rel.student_name }}? This will also remove all course assignments.');">
+                                        <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr id="noRelationshipsRow">
+                                <td colspan="7">No teacher-student relationships found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div id="noSearchResults" class="no-results" style="display: none;">
+                        No relationships found matching your search.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistics -->
+            {% if relationships %}
+            <div class="section-card">
+                <h3>Relationship Statistics</h3>
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <h4>Total Relationships</h4>
+                        <div class="stat-value">{{ relationships|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Unique Teachers</h4>
+                        <div class="stat-value">{{ relationships|map(attribute='teacher_id')|unique|list|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Unique Students</h4>
+                        <div class="stat-value">{{ relationships|map(attribute='student_id')|unique|list|length }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Avg Students per Teacher</h4>
+                        <div class="stat-value">
+                            {% set teacher_count = relationships|map(attribute='teacher_id')|unique|list|length %}
+                            {% if teacher_count > 0 %}
+                                {{ (relationships|length / teacher_count)|round(1) }}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+    
+    <script>
+        const searchInput = document.getElementById('relationshipSearch');
+        const clearButton = document.getElementById('clearSearch');
+        const searchResults = document.getElementById('searchResults');
+        const relationshipRows = document.querySelectorAll('.relationship-row');
+        const relationshipCount = document.getElementById('relationshipCount');
+        const noSearchResults = document.getElementById('noSearchResults');
+        const relationshipsTable = document.querySelector('.table-responsive table');
+        const totalRelationships = {{ relationships|length }};
+        
+        function performSearch() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+            
+            if (searchTerm === '') {
+                relationshipRows.forEach(row => {
+                    row.style.display = '';
+                });
+                visibleCount = totalRelationships;
+                searchResults.textContent = '';
+                noSearchResults.style.display = 'none';
+                relationshipsTable.style.display = '';
+            } else {
+                relationshipRows.forEach(row => {
+                    const teacherName = row.dataset.teacherName;
+                    const studentName = row.dataset.studentName;
+                    
+                    if (teacherName.includes(searchTerm) || studentName.includes(searchTerm)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+                
+                if (visibleCount === 0) {
+                    noSearchResults.style.display = 'block';
+                    relationshipsTable.style.display = 'none';
+                } else {
+                    noSearchResults.style.display = 'none';
+                    relationshipsTable.style.display = '';
+                }
+                
+                searchResults.textContent = `Showing ${visibleCount} of ${totalRelationships} relationships`;
+            }
+            
+            relationshipCount.textContent = visibleCount;
+        }
+        
+        searchInput.addEventListener('input', performSearch);
+        
+        clearButton.addEventListener('click', () => {
+            searchInput.value = '';
+            performSearch();
+            searchInput.focus();
+        });
+    </script>
+</body>
+</html>

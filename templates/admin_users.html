@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">Admin Panel</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('admin_create_user') }}">Create User</a></li>
+                <li class="active"><a href="{{ url_for('admin_users') }}">Manage Users</a></li>
+                <li><a href="{{ url_for('admin_courses') }}">Manage Courses</a></li>
+                <li><a href="{{ url_for('admin_teacher_students') }}">Teacher-Student Links</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Manage Users</h1>
+                <a href="{{ url_for('admin_create_user') }}" class="btn btn-primary">Create New User</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <!-- Filters and Search -->
+            <div class="section-card">
+                <h3>Filter Users</h3>
+                <form method="GET" action="{{ url_for('admin_users') }}" class="filter-form">
+                    <div class="filter-container">
+                        <select name="type" class="filter-select" onchange="this.form.submit()">
+                            <option value="all" {% if user_type == 'all' %}selected{% endif %}>All Users</option>
+                            <option value="admin" {% if user_type == 'admin' %}selected{% endif %}>Administrators</option>
+                            <option value="teacher" {% if user_type == 'teacher' %}selected{% endif %}>Teachers</option>
+                            <option value="student" {% if user_type == 'student' %}selected{% endif %}>Students</option>
+                        </select>
+                        
+                        <input type="text" 
+                               name="search" 
+                               placeholder="Search by name, email, or username..." 
+                               class="search-input"
+                               value="{{ search }}"
+                               style="flex: 1; margin: 0;">
+                        
+                        <button type="submit" class="btn btn-primary">Search</button>
+                        
+                        {% if search or user_type != 'all' %}
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Clear</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Users Table -->
+            <div class="section-card">
+                <h3>Users List ({{ users|length }} found)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Username</th>
+                                <th>Type</th>
+                                <th>Year</th>
+                                <th>Section</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.user_id }}</td>
+                                <td><strong>{{ user.full_name }}</strong></td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.username }}</td>
+                                <td>
+                                    <span class="badge badge-{{ user.user_type }}">
+                                        {{ user.user_type|title }}
+                                    </span>
+                                </td>
+                                <td>{{ user.academic_year or '-' }}</td>
+                                <td>{{ user.section or '-' }}</td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
+                                <td>
+                                    <a href="{{ url_for('admin_edit_user', user_id=user.user_id) }}" 
+                                       class="btn btn-sm btn-secondary">Edit</a>
+                                    {% if user.user_id != session.user_id %}
+                                    <form method="POST" 
+                                          action="{{ url_for('admin_delete_user', user_id=user.user_id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Are you sure you want to delete {{ user.full_name }}? This action cannot be undone.');">
+                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="9">No users found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

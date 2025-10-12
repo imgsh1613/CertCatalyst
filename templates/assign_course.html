@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign Courses</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">VerifiCert</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Teacher</div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('teacher_courses') }}">My Courses</a></li>
+                <li><a href="{{ url_for('add_student') }}">Add Student</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Assign Courses to Student</h1>
+                <a href="{{ url_for('view_student', student_id=student.user_id) }}" class="btn btn-back">Back to Student</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <div class="form-container">
+                <div class="form-card">
+                    <h2>Student Information</h2>
+                    <div class="student-info-box">
+                        <p><strong>Name:</strong> {{ student.full_name }}</p>
+                        <p><strong>Email:</strong> {{ student.email }}</p>
+                        {% if student.academic_year %}
+                        <p><strong>Year:</strong> {{ student.academic_year }}</p>
+                        {% endif %}
+                        {% if student.section %}
+                        <p><strong>Section:</strong> {{ student.section }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <h3>Select Courses to Assign</h3>
+                    <form action="{{ url_for('assign_course', student_id=student.user_id) }}" method="POST">
+                        <div class="course-selection-grid">
+                            {% for course in courses %}
+                            <div class="course-checkbox-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" 
+                                           name="course_ids" 
+                                           value="{{ course.course_id }}"
+                                           {% if course.course_id in assigned_course_ids %}checked disabled{% endif %}>
+                                    <div class="checkbox-content">
+                                        <strong>{{ course.course_name }}</strong>
+                                        <span class="course-year-badge">{{ course.course_year }}</span>
+                                        {% if course.course_description %}
+                                        <p class="course-desc">{{ course.course_description }}</p>
+                                        {% endif %}
+                                        {% if course.course_id in assigned_course_ids %}
+                                        <span class="already-assigned">✓ Already Assigned</span>
+                                        {% endif %}
+                                    </div>
+                                </label>
+                            </div>
+                            {% else %}
+                            <p class="no-data">No courses available. Please create courses first.</p>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if courses %}
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Assign Selected Courses</button>
+                            <a href="{{ url_for('view_student', student_id=student.user_id) }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

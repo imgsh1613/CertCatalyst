@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit User - Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="logo">Admin Panel</div>
+            <div class="user-info">
+                <div class="user-name">{{ session.full_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('admin_create_user') }}">Create User</a></li>
+                <li class="active"><a href="{{ url_for('admin_users') }}">Manage Users</a></li>
+                <li><a href="{{ url_for('admin_courses') }}">Manage Courses</a></li>
+                <li><a href="{{ url_for('admin_teacher_students') }}">Teacher-Student Links</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Edit User</h1>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-back">Back to Users</a>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </header>
+            
+            <div class="form-container">
+                <div class="form-card">
+                    <h2>Edit User Information</h2>
+                    <p class="form-info">User ID: {{ user.user_id }} | Created: {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</p>
+                    
+                    <form action="{{ url_for('admin_edit_user', user_id=user.user_id) }}" method="POST">
+                        <div class="form-group">
+                            <label for="user_type">User Type *</label>
+                            <select id="user_type" name="user_type" required onchange="toggleStudentFields()">
+                                <option value="teacher" {% if user.user_type == 'teacher' %}selected{% endif %}>Teacher</option>
+                                <option value="student" {% if user.user_type == 'student' %}selected{% endif %}>Student</option>
+                                <option value="admin" {% if user.user_type == 'admin' %}selected{% endif %}>Administrator</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="full_name">Full Name *</label>
+                            <input type="text" id="full_name" name="full_name" required value="{{ user.full_name }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" name="email" required value="{{ user.email }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="username">Username *</label>
+                            <input type="text" id="username" name="username" required value="{{ user.username }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">New Password</label>
+                            <input type="password" id="password" name="password" minlength="6">
+                            <small>Leave blank to keep current password</small>
+                        </div>
+                        
+                        <!-- Student-specific fields -->
+                        <div id="studentFields" {% if user.user_type != 'student' %}style="display: none;"{% endif %}>
+                            <div class="info-box">
+                                <h4>📚 Student Classification</h4>
+                                <p>Update the academic year and section for this student.</p>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="academic_year">Academic Year</label>
+                                <select id="academic_year" name="academic_year">
+                                    <option value="">Select year...</option>
+                                    <option value="I" {% if user.academic_year == 'I' %}selected{% endif %}>I</option>
+                                    <option value="II" {% if user.academic_year == 'II' %}selected{% endif %}>II</option>
+                                    <option value="III" {% if user.academic_year == 'III' %}selected{% endif %}>III</option>
+                                    <option value="IV" {% if user.academic_year == 'IV' %}selected{% endif %}>IV</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="section">Section</label>
+                                <select id="section" name="section">
+                                    <option value="">Select section...</option>
+                                    <option value="A" {% if user.section == 'A' %}selected{% endif %}>A</option>
+                                    <option value="B" {% if user.section == 'B' %}selected{% endif %}>B</option>
+                                    <option value="C" {% if user.section == 'C' %}selected{% endif %}>C</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Update User</button>
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        function toggleStudentFields() {
+            const userType = document.getElementById('user_type').value;
+            const studentFields = document.getElementById('studentFields');
+            
+            if (userType === 'student') {
+                studentFields.style.display = 'block';
+            } else {
+                studentFields.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
