@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Certification Tracker</title>
+    <title>Login - VerifiCert</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="container">
         <div class="auth-container">
-            <h1>Certification Tracker</h1>
+            <h1 style="font-size: 4rem;"><strong>VerifiCert</strong></h1>
             <div class="auth-box">
                 <h2>Login</h2>
                 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -37,3 +37,5 @@
     </div>
 </body>
 </html>
+
+
